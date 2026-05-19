@@ -1,0 +1,54 @@
+---
+title: "Billing"
+description: "Pay with USDC on Arc Testnet and understand tier limits."
+icon: "credit-card"
+---
+
+Eternum billing uses manual monthly USDC payments on Arc Testnet.
+
+## Plans
+
+| Plan | Price | Vault items | Trusted contacts | Beneficiaries | Check-in interval |
+| --- | --- | --- | --- | --- | --- |
+| Seed | Free | 3 | 2 | 2 | 30 days |
+| Legacy | 8 USDC / month | Unlimited | 5 | 5 | 7 days |
+| Estate | 25 USDC / month | Unlimited | Unlimited | Unlimited | 3 days |
+
+## Pay with USDC
+
+<Steps>
+  <Step title="Open Billing">
+    Go to Billing from the app sidebar.
+  </Step>
+  <Step title="Connect a wallet">
+    Choose a browser wallet from the wallet selector. Eternum uses wagmi to discover installed wallet extensions.
+  </Step>
+  <Step title="Switch to Arc Testnet">
+    Your wallet may ask to add or switch networks. Use chain ID `5042002` and RPC `https://rpc.testnet.arc.network`.
+  </Step>
+  <Step title="Approve the USDC transfer">
+    The app sends USDC to the configured receiving wallet and receives a transaction hash.
+  </Step>
+  <Step title="Wait for verification">
+    The backend verifies the transaction receipt, recipient, sender, token contract, and amount before updating your tier.
+  </Step>
+</Steps>
+
+## Arc Testnet details
+
+```text
+Network name: Arc Testnet
+Chain ID: 5042002
+RPC URL: https://rpc.testnet.arc.network
+Currency symbol: USDC
+Block explorer: https://testnet.arcscan.app
+USDC contract: 0x3600000000000000000000000000000000000000
+```
+
+## Renewal and grace period
+
+Paid tiers are valid for 30 days. If a paid tier expires, Eternum enters a grace period before downgrading the account to Seed.
+
+<Note>
+Billing is currently on Arc Testnet. Testnet payments do not represent production payment settlement.
+</Note>

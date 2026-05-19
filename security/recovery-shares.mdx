@@ -1,0 +1,31 @@
+---
+title: "Recovery shares"
+description: "Understand the 3-of-5 recovery share design."
+icon: "share-nodes"
+---
+
+Recovery shares are Shamir Secret Sharing fragments of the vault master key. Eternum uses a 3-of-5 threshold.
+
+## Share holders
+
+| Share | Holder |
+| --- | --- |
+| 1 | Trusted contact |
+| 2 | Trusted contact |
+| 3 | Platform share |
+| 4 | Device/session share |
+| 5 | Cold backup share |
+
+A beneficiary needs at least three valid shares to recover the vault.
+
+## Trusted-contact shares
+
+Trusted-contact shares are first encrypted with a bootstrap key. During activation, the trusted contact re-seals the share to their own key pair and protects the private key with a passphrase.
+
+## Cold backup share
+
+The cold backup share is intended for offline storage. It is displayed during setup and should be printed or saved outside the app.
+
+<Warning>
+If you close the setup session before saving the cold backup, the app cannot display the same backup share again. Rotate credentials to regenerate recovery shares.
+</Warning>

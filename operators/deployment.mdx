@@ -1,0 +1,37 @@
+---
+title: "Deployment"
+description: "Deploy Eternum with Docker Compose and Cloudflare Tunnel."
+icon: "server"
+---
+
+Eternum runs as a Docker Compose stack with a Next.js web app, Fastify API, PostgreSQL, Redis, release Redis, and MinIO.
+
+## Services
+
+| Service | Purpose |
+| --- | --- |
+| web | Next.js app |
+| api | Fastify API and in-process poller |
+| postgres | relational database |
+| redis | auth blocklist, rate limiting, and app cache |
+| release-redis | volatile beneficiary-bound recovery share storage |
+| minio | encrypted vault blobs and death certificate files |
+| cloudflared | public tunnel ingress |
+
+## Common commands
+
+```bash
+docker compose up -d
+docker compose -f docker-compose.prod.yml --env-file .env.production up -d --build
+npm run db:migrate
+```
+
+## Production notes
+
+<Warning>
+Do not expose PostgreSQL, Redis, release Redis, or MinIO data ports publicly. Production access should go through the web app, API, and controlled admin tools.
+</Warning>
+
+<Info>
+The API poller currently runs in-process. Multiple API replicas require a distributed lock or a separate worker model to avoid duplicate escalation work.
+</Info>

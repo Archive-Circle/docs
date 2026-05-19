@@ -1,0 +1,29 @@
+---
+title: "Key management"
+description: "How Eternum derives, encrypts, and verifies vault keys."
+icon: "key"
+---
+
+Eternum derives encryption keys in the browser and stores only encrypted material on the server.
+
+## Credential derivation
+
+The browser uses Argon2id to derive a master key from the owner's PIN or password. The server stores the KDF salt and parameters, but not the derived key.
+
+## Vault item encryption
+
+Each vault item uses a data encryption key. The data encryption key encrypts the item content, and the master key encrypts the data encryption key.
+
+```text
+PIN/password -> Argon2id -> master key
+random bytes -> item key -> AES-GCM vault content
+master key -> AES-GCM item key
+```
+
+## Credential rotation
+
+Credential rotation re-derives key material and re-encrypts vault item keys. It also regenerates recovery shares while preserving the intended recovery model.
+
+<Info>
+Changing your credential does not upload the plaintext master key to the server.
+</Info>

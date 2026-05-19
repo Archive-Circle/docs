@@ -1,0 +1,35 @@
+---
+title: "Trusted contact share release"
+description: "How trusted contacts release recovery shares to a beneficiary session."
+icon: "user-check"
+---
+
+After death verification, trusted contacts can release their activated shares to a beneficiary recovery session.
+
+## What the trusted contact does
+
+<Steps>
+  <Step title="Open the trusted contact portal">
+    The contact uses their portal link.
+  </Step>
+  <Step title="Unlock their private key">
+    They enter the passphrase created during share activation.
+  </Step>
+  <Step title="Unseal the share locally">
+    The browser decrypts the contact-held share. The plaintext share is not sent to the server.
+  </Step>
+  <Step title="Re-encrypt to the beneficiary">
+    The browser encrypts the share to the beneficiary recovery session public key.
+  </Step>
+  <Step title="Submit the release">
+    Eternum stores the beneficiary-bound ciphertext in volatile recovery storage.
+  </Step>
+</Steps>
+
+## Release storage
+
+Released shares are stored in release Redis with short time-to-live values. They are bound to a beneficiary recovery session and are not reusable across sessions.
+
+<Info>
+If a recovery session expires, the beneficiary may need to start a new session and ask contacts to release shares again.
+</Info>

@@ -1,0 +1,38 @@
+---
+title: "Environment variables"
+description: "Configure database, Redis, storage, email, auth, and Arc billing settings."
+icon: "sliders"
+---
+
+Eternum reads configuration from environment variables. Keep production secrets outside git.
+
+## Required categories
+
+| Category | Examples |
+| --- | --- |
+| Database | `DB_HOST`, `DB_USER`, `DB_PASSWORD` |
+| Redis | `REDIS_HOST`, `RELEASE_REDIS_HOST` |
+| Storage | `MINIO_ENDPOINT`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY` |
+| Auth | `JWT_SECRET`, `REFRESH_TOKEN_SECRET` |
+| Email | `EMAIL_PROVIDER`, `RESEND_API_KEY`, `EMAIL_FROM` |
+| Billing | `ARC_RECEIVING_ADDRESS`, `ARC_RPC_URL`, `USDC_CONTRACT_ADDRESS` |
+
+## Arc Testnet defaults
+
+```text
+ARC_RPC_URL=https://rpc.testnet.arc.network
+ARC_CHAIN_ID=5042002
+USDC_CONTRACT_ADDRESS=0x3600000000000000000000000000000000000000
+```
+
+The frontend also uses public equivalents for wallet and billing configuration:
+
+```text
+NEXT_PUBLIC_ARC_RECEIVING_ADDRESS=0x7F91Fb08A0A94b27ad57a4F4283945b1407FFb6D
+NEXT_PUBLIC_ARC_CHAIN_ID=5042002
+NEXT_PUBLIC_USDC_CONTRACT_ADDRESS=0x3600000000000000000000000000000000000000
+```
+
+<Warning>
+Rotate any production secret that was ever committed, copied into logs, or shared in a public channel.
+</Warning>

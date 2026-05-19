@@ -1,0 +1,40 @@
+---
+title: "Beneficiaries"
+description: "Add beneficiaries and understand what allocation percentages mean."
+icon: "heart"
+---
+
+Beneficiaries are the people who can claim recovery access after death verification completes.
+
+## What beneficiaries receive
+
+After verification, a beneficiary receives a claim link. The claim page lets them start a recovery session and collect enough released shares to reconstruct the vault key in their browser.
+
+<Warning>
+Once a beneficiary reconstructs the vault key, they can decrypt the vault items available in the recovery payload. Allocation percentages are informational; they do not cryptographically restrict item access.
+</Warning>
+
+## Allocation percentages
+
+Allocation percentages help document intended estate allocation. Eternum validates that beneficiary allocations total 100% or less.
+
+Example:
+
+| Beneficiary | Allocation |
+| --- | --- |
+| Alice | 60% |
+| Bob | 40% |
+
+Unassigned allocation stays unspecified in Eternum.
+
+## Beneficiary limits by plan
+
+| Plan | Beneficiaries |
+| --- | --- |
+| Seed | 2 |
+| Legacy | 5 |
+| Estate | Unlimited |
+
+## When claim links are available
+
+Claim tokens can only be generated after death verification reaches the verified state. Before that, beneficiaries can be listed on the account but cannot access recovery.

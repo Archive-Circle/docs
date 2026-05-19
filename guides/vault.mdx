@@ -1,0 +1,40 @@
+---
+title: "Vault items"
+description: "Understand how vault items are encrypted, stored, edited, and recovered."
+icon: "vault"
+---
+
+Vault items are the records you want beneficiaries to recover later. They can be text records, passwords, notes, crypto keys, documents, or files.
+
+## Encryption path
+
+Eternum encrypts vault content in your browser before upload.
+
+<Steps>
+  <Step title="Derive the master key">
+    Your browser derives a master key from your PIN or password with Argon2id.
+  </Step>
+  <Step title="Generate an item key">
+    Each item gets its own data encryption key.
+  </Step>
+  <Step title="Encrypt content">
+    The item content is encrypted with AES-GCM. The server receives ciphertext only.
+  </Step>
+  <Step title="Store metadata and blob data">
+    Metadata is stored in PostgreSQL. Encrypted file blobs are stored in object storage.
+  </Step>
+</Steps>
+
+## Item limits by plan
+
+| Plan | Vault items |
+| --- | --- |
+| Seed | 3 |
+| Legacy | Unlimited |
+| Estate | Unlimited |
+
+If you hit your plan limit, the app shows an upgrade prompt from the vault item creation flow.
+
+<Warning>
+Do not store the only copy of your credential in the vault. You need the credential to decrypt the vault before recovery.
+</Warning>

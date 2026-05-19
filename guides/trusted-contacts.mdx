@@ -1,0 +1,54 @@
+---
+title: "Trusted contacts"
+description: "Learn what trusted contacts do and how they activate recovery shares."
+icon: "users"
+---
+
+Trusted contacts help Eternum verify your status and release recovery shares after death verification. They do not receive vault plaintext.
+
+## Responsibilities
+
+Trusted contacts can:
+
+- Receive check-in escalation emails
+- Confirm death or contest a false alarm
+- Upload evidence during verification
+- Activate and later release their assigned recovery share
+
+They cannot:
+
+- Read your vault items
+- Recover your vault alone
+- Release shares before death verification allows it
+
+## Activation flow
+
+<Steps>
+  <Step title="You add a trusted contact">
+    Eternum sends an email telling them they were added.
+  </Step>
+  <Step title="You assign a recovery share">
+    Share assignment creates a portal link for that trusted contact.
+  </Step>
+  <Step title="They enter the bootstrap key">
+    The bootstrap key is shared out-of-band. It unlocks the initial encrypted share.
+  </Step>
+  <Step title="They set a passphrase">
+    The contact protects their private key locally with a passphrase.
+  </Step>
+  <Step title="They become active">
+    Once activated, their share can be released later if verification completes.
+  </Step>
+</Steps>
+
+## Contact limits by plan
+
+| Plan | Trusted contacts |
+| --- | --- |
+| Seed | 2 |
+| Legacy | 5 |
+| Estate | Unlimited |
+
+<Info>
+Use contacts who are likely to respond and who do not share the same email account or device access.
+</Info>

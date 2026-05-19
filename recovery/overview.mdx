@@ -1,0 +1,43 @@
+---
+title: "Recovery overview"
+description: "Understand how death verification leads to beneficiary recovery."
+icon: "key"
+---
+
+Recovery is the process that lets beneficiaries reconstruct your vault key after death verification.
+
+## Recovery actors
+
+| Actor | Role |
+| --- | --- |
+| Owner | Creates the vault, trusted contacts, beneficiaries, and recovery shares. |
+| Trusted contact | Confirms status and releases a protected share after verification. |
+| Beneficiary | Starts a claim session and reconstructs the vault key in-browser. |
+| Platform | Stores encrypted data, releases platform-held share material, and enforces verification state. |
+
+## Recovery path
+
+<Steps>
+  <Step title="Owner misses check-ins">
+    The verification pipeline escalates through reminder and contact stages.
+  </Step>
+  <Step title="Signals are collected">
+    Trusted-contact confirmations and document review contribute signals.
+  </Step>
+  <Step title="Challenge window opens">
+    A challenge period gives contacts a chance to contest false verification.
+  </Step>
+  <Step title="Verification completes">
+    The pipeline reaches verified status.
+  </Step>
+  <Step title="Trusted contacts release shares">
+    Active contacts decrypt their share locally and re-encrypt it to the beneficiary recovery session.
+  </Step>
+  <Step title="Beneficiary reconstructs the key">
+    The beneficiary combines enough shares in the browser and decrypts vault items.
+  </Step>
+</Steps>
+
+<Warning>
+Recovery depends on enough activated shares being available. Add trusted contacts early and confirm they complete activation.
+</Warning>

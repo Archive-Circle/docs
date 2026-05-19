@@ -1,0 +1,38 @@
+---
+title: "Beneficiary claim"
+description: "How beneficiaries recover vault contents after verification."
+icon: "unlock"
+---
+
+A beneficiary claim starts after death verification completes and a claim token is generated.
+
+## Claim flow
+
+<Steps>
+  <Step title="Open the claim link">
+    The beneficiary opens the claim URL from their notification or from the owner account's beneficiary tools.
+  </Step>
+  <Step title="Start a recovery session">
+    The browser generates an ephemeral recovery key pair and registers the public key with Eternum.
+  </Step>
+  <Step title="Wait for shares">
+    Trusted contacts release beneficiary-bound shares to the recovery session.
+  </Step>
+  <Step title="Add optional cold backup">
+    If available, the beneficiary can paste or scan the cold backup share.
+  </Step>
+  <Step title="Combine enough shares">
+    The browser combines at least three shares to reconstruct the master key.
+  </Step>
+  <Step title="Decrypt vault items">
+    The browser decrypts item keys and vault blobs locally.
+  </Step>
+</Steps>
+
+## Threshold
+
+Eternum uses a 3-of-5 share model. Recovery needs at least three valid shares.
+
+<Warning>
+The claim page reconstructs the master key in the beneficiary browser. Treat the recovered session as sensitive and use a trusted device.
+</Warning>

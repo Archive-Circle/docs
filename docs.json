@@ -1,11 +1,11 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Mintlify Starter Kit",
+  "name": "Eternum",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#60A5FA",
+    "light": "#93C5FD",
+    "dark": "#2563EB"
   },
   "favicon": "/favicon.svg",
   "navigation": {
@@ -14,59 +14,54 @@
         "tab": "Guides",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Start here",
             "pages": [
               "index",
-              "quickstart",
-              "development"
+              "quickstart"
             ]
           },
           {
-            "group": "Customization",
+            "group": "User guides",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "guides/vault",
+              "guides/trusted-contacts",
+              "guides/beneficiaries",
+              "guides/check-ins",
+              "guides/billing"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Recovery",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/components",
-              "essentials/reusable-snippets"
-            ]
-          },
-          {
-            "group": "Agent ready",
-            "pages": [
-              "agent-ready/prompt",
-              "agent-ready/visibility",
-              "agent-ready/contextual",
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "recovery/overview",
+              "recovery/trusted-contact-release",
+              "recovery/beneficiary-claim"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "Security",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Security model",
             "pages": [
-              "api-reference/introduction"
+              "security/zero-knowledge-model",
+              "security/key-management",
+              "security/recovery-shares"
             ]
-          },
+          }
+        ]
+      },
+      {
+        "tab": "Operators",
+        "groups": [
           {
-            "group": "Endpoint examples",
+            "group": "Operations",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "operators/deployment",
+              "operators/admin-pipeline",
+              "operators/environment"
             ]
           }
         ]
@@ -75,14 +70,14 @@
     "global": {
       "anchors": [
         {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
+          "anchor": "App",
+          "href": "https://eternum-staging.frostnova.moe",
+          "icon": "external-link"
         },
         {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
+          "anchor": "GitHub",
+          "href": "https://github.com/Archive-Circle/eternum",
+          "icon": "github"
         }
       ]
     }
@@ -94,33 +89,31 @@
   "navbar": {
     "links": [
       {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
+        "label": "GitHub",
+        "href": "https://github.com/Archive-Circle/eternum"
       }
     ],
     "primary": {
       "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
+      "label": "Open app",
+      "href": "https://eternum-staging.frostnova.moe"
     }
   },
   "contextual": {
     "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
+      "copy",
+      "view",
+      "chatgpt",
+      "claude",
+      "perplexity",
+      "mcp",
+      "cursor",
+      "vscode"
+    ]
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "github": "https://github.com/Archive-Circle/eternum"
     }
   }
 }

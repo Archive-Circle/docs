@@ -1,0 +1,34 @@
+---
+title: "Admin pipeline"
+description: "Review death verification cases and operate the escalation pipeline."
+icon: "gauge"
+---
+
+The admin pipeline dashboard is used to inspect and operate death verification cases.
+
+## Admin tasks
+
+Admins can:
+
+- View verification cases
+- Review death certificate uploads
+- Approve or deny certificate evidence
+- Trigger pipeline presets in development or staging
+- Resolve contests during the challenge window
+
+## Pipeline states
+
+| State | Meaning |
+| --- | --- |
+| pending | Verification is active but not complete. |
+| contested | A trusted contact contested the verification. |
+| verified | Recovery can proceed. |
+| cancelled | The pipeline was stopped, usually by owner check-in. |
+
+## Signal threshold
+
+Verification requires at least two signals and at least one high-weight signal. High-weight signals include reviewed documents such as notarized certificates or government registry matches.
+
+<Warning>
+Admin actions affect beneficiary recovery. Review evidence carefully before moving a case to verified.
+</Warning>
