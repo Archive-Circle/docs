@@ -3,9 +3,9 @@
   "theme": "mint",
   "name": "Archive Circle",
   "colors": {
-    "primary": "#60A5FA",
-    "light": "#93C5FD",
-    "dark": "#2563EB"
+    "primary": "#E07AAE",
+    "light": "#F29BC1",
+    "dark": "#7EC7D1"
   },
   "favicon": "/favicon.svg",
   "navigation": {
