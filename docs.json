@@ -1,7 +1,7 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Eternum",
+  "name": "Archive Circle",
   "colors": {
     "primary": "#60A5FA",
     "light": "#93C5FD",
@@ -11,7 +11,7 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Eternum",
         "groups": [
           {
             "group": "Start here",
@@ -37,27 +37,17 @@
               "recovery/trusted-contact-release",
               "recovery/beneficiary-claim"
             ]
-          }
-        ]
-      },
-      {
-        "tab": "Security",
-        "groups": [
+          },
           {
-            "group": "Security model",
+            "group": "Security",
             "pages": [
               "security/zero-knowledge-model",
               "security/key-management",
               "security/recovery-shares"
             ]
-          }
-        ]
-      },
-      {
-        "tab": "Operators",
-        "groups": [
+          },
           {
-            "group": "Operations",
+            "group": "Operators",
             "pages": [
               "operators/deployment",
               "operators/admin-pipeline",
@@ -70,12 +60,12 @@
     "global": {
       "anchors": [
         {
-          "anchor": "App",
+          "anchor": "Eternum App",
           "href": "https://eternum-staging.frostnova.moe",
           "icon": "external-link"
         },
         {
-          "anchor": "GitHub",
+          "anchor": "Eternum GitHub",
           "href": "https://github.com/Archive-Circle/eternum",
           "icon": "github"
         }
@@ -89,13 +79,13 @@
   "navbar": {
     "links": [
       {
-        "label": "GitHub",
+        "label": "Eternum GitHub",
         "href": "https://github.com/Archive-Circle/eternum"
       }
     ],
     "primary": {
       "type": "button",
-      "label": "Open app",
+      "label": "Open Eternum",
       "href": "https://eternum-staging.frostnova.moe"
     }
   },
