@@ -1,95 +1,130 @@
 ---
 title: 'Development'
-description: 'Preview changes locally to update your docs'
+description: 'Preview and validate Archive Circle docs locally'
 icon: 'terminal'
 ---
 
 <Info>
   **Prerequisites**:
-  - Node.js version 19 or higher
-  - A docs repository with a `docs.json` file
+  - Node.js 20 or newer
+  - npm
+  - A local clone of this repository
+  - A `docs.json` file at the repository root
 </Info>
 
-Follow these steps to install and run Mintlify on your operating system.
+This page explains how to preview and validate the Archive Circle Mintlify docs site locally.
 
-<Steps>
-<Step title="Install the Mintlify CLI">
+## Install the Mintlify CLI
 
-```bash
-npm i -g mint
-```
-</Step>
-
-<Step title="Preview locally">
-
-Navigate to your docs directory where your `docs.json` file is located, and run the following command:
+Install the CLI globally:
 
 ```bash
-mint dev
+npm install -g mintlify
 ```
 
-A local preview of your documentation will be available at `http://localhost:3000`.
-
-</Step>
-</Steps>
-
-## Custom ports
-
-By default, Mintlify uses port 3000. You can customize the port Mintlify runs on by using the `--port` flag. For example, to run Mintlify on port 3333, use this command:
+Check the installed version:
 
 ```bash
-mint dev --port 3333
+mintlify --version
 ```
 
-If you attempt to run Mintlify on a port that's already in use, it will use the next available port:
+<Note>
+Some Mintlify documentation refers to the newer `mint` command. This repository currently uses the `mintlify` command.
+</Note>
 
-```md
-Port 3000 is already in use. Trying 3001 instead.
-```
+## Preview locally
 
-## Mintlify versions
-
-Please note that each CLI release is associated with a specific version of Mintlify. If your local preview does not align with the production version, please update the CLI:
+From the repository root, run:
 
 ```bash
-npm mint update
+mintlify dev --no-open
 ```
 
-## Validating links
-
-The CLI can assist with validating links in your documentation. To identify any broken links, use the following command:
+Or open the browser automatically:
 
 ```bash
-mint broken-links
+mintlify dev
 ```
 
-## Deployment
+The preview usually runs at:
 
-If the deployment is successful, you should see the following:
+```text
+http://localhost:3000
+```
 
-<Frame>
-  <img src="/images/checks-passed.png" alt="Screenshot of a deployment confirmation message that says All checks have passed." style={{ borderRadius: '0.5rem' }} />
-</Frame>
+If port `3000` is already in use, Mintlify may select another available port. Check the terminal output for the exact URL.
+
+## Validate navigation references
+
+Before opening or merging a PR, make sure every page listed in `docs.json` exists.
+
+Run this from the repository root:
+
+```bash
+python3 - <<'PY'
+import json
+from pathlib import Path
+
+cfg = json.load(open('docs.json'))
+missing = []
+for tab in cfg.get('navigation', {}).get('tabs', []):
+    for group in tab.get('groups', []):
+        for page in group.get('pages', []):
+            if isinstance(page, str) and not Path(page + '.mdx').exists():
+                missing.append(page)
+
+print('site name:', cfg.get('name'))
+print('tabs:', [tab.get('tab') for tab in cfg.get('navigation', {}).get('tabs', [])])
+print('missing nav refs:', missing or 'none')
+raise SystemExit(1 if missing else 0)
+PY
+```
+
+## Multi-product docs checks
+
+Archive Circle docs are structured as a multi-product site.
+
+Before merging structural docs changes, confirm:
+
+- New products have their own product-level tab in `docs.json`.
+- New products use product-prefixed folders, for example `chainlens/`.
+- Product-specific app or GitHub links are clearly labeled.
+- The global site name remains company-level unless the whole docs brand changes.
+- No unrelated product docs are mixed into another product's section.
 
 ## Code formatting
 
-We suggest using extensions on your IDE to recognize and format MDX. If you're a VSCode user, consider the [MDX VSCode extension](https://marketplace.visualstudio.com/items?itemName=unifiedjs.vscode-mdx) for syntax highlighting, and [Prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode) for code formatting.
+Use an editor that understands MDX. For VS Code, useful extensions include:
+
+- [MDX](https://marketplace.visualstudio.com/items?itemName=unifiedjs.vscode-mdx)
+- [Prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode)
 
 ## Troubleshooting
 
 <AccordionGroup>
-  <Accordion title='Error: Could not load the "sharp" module using the darwin-arm64 runtime'>
-
-    This may be due to an outdated version of node. Try the following:
-    1. Remove the currently-installed version of the CLI: `npm remove -g mint`
-    2. Upgrade to Node v19 or higher.
-    3. Reinstall the CLI: `npm i -g mint`
+  <Accordion title="The local preview does not start">
+    Make sure you are running the command from the repository root where `docs.json` exists. Then check that Node.js and npm are installed.
   </Accordion>
 
-  <Accordion title="Issue: Encountering an unknown error">
-  
-    Solution: Go to the root of your device and delete the `~/.mintlify` folder. Then run `mint dev` again.
+  <Accordion title="A page returns 404 in local preview">
+    Check that the page exists as a `.mdx` file and that its path is listed correctly in `docs.json` without the `.mdx` extension.
+  </Accordion>
+
+  <Accordion title="Mintlify CLI behavior looks stale">
+    Update the CLI:
+
+    ```bash
+    npm update -g mintlify
+    ```
+
+    Then run `mintlify --version` again.
+  </Accordion>
+
+  <Accordion title="MDX fails to render">
+    Check for unclosed Mintlify components, invalid JSX props, or code examples that need to be inside fenced code blocks.
   </Accordion>
 </AccordionGroup>
 
-Curious about what changed in the latest CLI version? Check out the [CLI changelog](https://www.npmjs.com/package/mintlify?activeTab=versions).
+## Deployment
+
+Mintlify deploys from the default branch when the GitHub integration is configured. For pull requests, prefer reviewing the rendered preview when available. If the deployment check is skipped, run the local preview and validation commands above.
