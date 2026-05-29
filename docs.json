@@ -65,6 +65,27 @@
             ]
           }
         ]
+      },
+      {
+        "tab": "ChainLens",
+        "groups": [
+          {
+            "group": "Start here",
+            "pages": [
+              "chainlens/overview",
+              "chainlens/quickstart"
+            ]
+          },
+          {
+            "group": "Product guide",
+            "pages": [
+              "chainlens/concepts",
+              "chainlens/configuration",
+              "chainlens/workflows",
+              "chainlens/api-reference"
+            ]
+          }
+        ]
       }
     ],
     "global": {

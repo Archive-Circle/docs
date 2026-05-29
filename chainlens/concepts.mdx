@@ -1,0 +1,121 @@
+---
+title: "ChainLens core concepts"
+description: "Understand ChainLens chains, providers, event types, summaries, leaderboards, and refresh behavior."
+icon: "diagram-project"
+---
+
+This page explains the main concepts behind the ChainLens API and web app.
+
+## Pair resolution
+
+ChainLens starts with a chain and an address. The address can be a pool address or, when supported, a token address.
+
+Resolution follows this general order:
+
+1. Try to resolve the address as an exact pool.
+2. If the address is a token, select the highest-liquidity pool on the requested chain when metadata is available.
+3. Use curated known-pool metadata when available.
+4. Fall back to mock data when real metadata cannot be resolved.
+
+The resolved pair includes the pool address, chain, DEX name, native asset symbol, base token, quote token, and fee tier when the pair exposes one.
+
+## Providers
+
+ChainLens prefers real on-chain data and falls back safely when upstream providers are unavailable.
+
+| Provider label | When it appears |
+| --- | --- |
+| `helius` | Solana events fetched through Helius enhanced transactions. |
+| `solana-public-rpc` | Solana events fetched from public RPC and classified from balance deltas. |
+| `alchemy` | EVM events fetched through Alchemy RPC. |
+| `public-rpc` | EVM events fetched through public RPC endpoints. |
+| `mock` | Synthetic data used when real sources are unavailable. |
+
+## Event types
+
+The live tape uses four activity types:
+
+| Type | Meaning |
+| --- | --- |
+| `buy` | A swap where the user buys the base token. |
+| `sell` | A swap where the user sells the base token. |
+| `lp_add` | A liquidity add event. |
+| `lp_remove` | A liquidity remove event. |
+
+On EVM chains, ChainLens decodes Uniswap V3 and V4 events directly. V4 liquidity events recover token amounts from transaction receipts because the `ModifyLiquidity` event itself does not carry token amounts.
+
+On Solana, ChainLens can use Helius enhanced transactions. Without Helius, it classifies activity by comparing pre-transaction and post-transaction token balances for the pair tokens.
+
+## Summary cards
+
+The API computes summary metrics for the selected window:
+
+| Metric | Meaning |
+| --- | --- |
+| Buy volume | Total USD value of buy events. |
+| Sell volume | Total USD value of sell events. |
+| LP added | Total USD value of liquidity added. |
+| LP removed | Total USD value of liquidity removed. |
+| Unique wallets | Number of distinct wallets in the event set. |
+| Largest event | Highest USD-value event in the window. |
+| Event count | Number of events in the event set. |
+
+The web app also presents net pressure and percentage breakdowns in the summary cards.
+
+## Leaderboards
+
+ChainLens builds three leaderboards from the full selected time window:
+
+- **Top Buyers**: wallets ranked by buy volume.
+- **Top Sellers**: wallets ranked by sell volume.
+- **Top LP**: wallets ranked by liquidity activity.
+
+Each leaderboard shows up to 10 wallets. Rows include the wallet, optional label, USD value, event count, and share of the category. Top LP rows also show added, removed, and net liquidity values.
+
+<Note>
+Leaderboards are computed from the unfiltered event set for the selected window. The visible tape is capped to the first 250 matching events, but leaderboard rankings are not limited to that visible slice.
+</Note>
+
+## Filters and sorting
+
+The events endpoint and UI support these filters:
+
+| Filter | Values |
+| --- | --- |
+| Chain | `solana`, `ethereum`, `base`, `arbitrum`, `bnb` |
+| Timeframe | `5m`, `15m`, `1h`, `4h`, `24h`, `7d`, `custom` |
+| Type | `all`, `buy`, `sell`, `lp_add`, `lp_remove`, or comma-separated types |
+| Sort | `time`, `usd`, `native` |
+| Minimum USD | Any numeric threshold |
+| Wallet | A wallet address to isolate one participant |
+
+Sorting by `time` returns newest events first. Sorting by `usd` or `native` returns highest-value events first.
+
+## Refresh behavior
+
+Preset timeframes auto-refresh while the browser tab is visible:
+
+| Timeframe | Refresh cadence |
+| --- | --- |
+| `5m`, `15m`, `1h` | 5 seconds |
+| `4h` | 15 seconds |
+| `24h` | 30 seconds |
+| `7d` | 60 seconds |
+| `custom` | Disabled |
+
+When filters change or a refresh is in progress, the UI shows a non-blocking blur overlay.
+
+## Shareable state
+
+The web app syncs view state to URL query parameters. Shared links can include:
+
+- `chain`
+- `pair`
+- `tf`
+- `type`
+- `sort`
+- `minUsd`
+- `wallet`
+- `from` and `to` for custom ranges
+
+Custom ranges use epoch seconds and are capped at 7 days.

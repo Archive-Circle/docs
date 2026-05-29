@@ -1,0 +1,59 @@
+---
+title: "ChainLens overview"
+description: "Real-time, multi-chain on-chain activity intelligence for DEX trading pairs."
+icon: "telescope"
+---
+
+ChainLens is a real-time, multi-chain on-chain activity dashboard for decentralized exchange (DEX) trading pairs. It shows a live chronological tape of swaps and liquidity changes on the left, and Top Buyer, Top Seller, and Top LP leaderboards on the right, so you can see both what is happening right now and who is moving the most money in a single view.
+
+<Info>
+ChainLens reads public on-chain data. It does not place trades, hold funds, or require a wallet connection. You point it at a pool address and it streams the activity for that pair.
+</Info>
+
+## What ChainLens does
+
+<Columns cols={2}>
+  <Card title="Get started" icon="rocket" href="/chainlens/quickstart">
+    Install dependencies, start the API and web app, and open your first pair.
+  </Card>
+  <Card title="Understand the concepts" icon="diagram-project" href="/chainlens/concepts">
+    Learn how chains, providers, the live tape, and leaderboards fit together.
+  </Card>
+  <Card title="Configure providers" icon="sliders" href="/chainlens/configuration">
+    Set optional API keys and public RPC overrides through environment variables.
+  </Card>
+  <Card title="Call the API" icon="code" href="/chainlens/api-reference">
+    Resolve pair metadata and fetch filtered events over HTTP.
+  </Card>
+</Columns>
+
+## Supported chains
+
+ChainLens resolves pools and decodes activity across five chains:
+
+| Chain | Native asset | Notes |
+| --- | --- | --- |
+| Solana | SOL | Helius enhanced transactions, or a public-RPC balance-delta path |
+| Ethereum | ETH | Uniswap V3 and V4 decoders over Alchemy or public RPC |
+| Base | ETH | Uniswap V3 and V4 decoders over Alchemy or public RPC |
+| Arbitrum | ETH | Uniswap V3 and V4 decoders over Alchemy or public RPC |
+| BNB Chain | BNB | Uniswap V3 and V4 decoders over Alchemy or public RPC |
+
+## Highlights
+
+- **Live tape**: a chronological feed of swaps and liquidity events, filterable by side, time window, and minimum USD value, with adaptive auto-refresh.
+- **Leaderboards**: Top Buyers, Top Sellers, and Top LP, each ranking up to 10 wallets. Rankings are computed across the entire window, not just the visible slice.
+- **Click to filter**: select a leaderboard row to narrow the tape to that wallet, then clear the filter to return to the full feed.
+- **Whale highlighting**: events at or above $50,000 are visually accented so large moves stand out.
+- **Custom time windows**: preset windows from 5 minutes to 7 days, plus a custom date range with second-level precision and a 7-day maximum.
+- **Shareable URL state**: the selected chain, pool, and filters sync to query parameters so a view can be shared by link.
+- **Runs without API keys**: with no keys set, ChainLens uses free public RPC endpoints for real events, and falls back to a deterministic mock provider when needed so the UI always renders.
+
+## Architecture at a glance
+
+ChainLens is a monorepo with two workspaces:
+
+- **API** (`apps/api`): a Fastify service in TypeScript that resolves pool addresses, fetches and decodes events, prices tokens, and computes summaries and leaderboards.
+- **Web** (`apps/web`): a Vite plus React single-page app that renders the tape, leaderboards, summary cards, and filters.
+
+See [Core concepts](/chainlens/concepts) for how data flows from the chain to the screen.
