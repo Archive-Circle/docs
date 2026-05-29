@@ -82,7 +82,7 @@
       "anchors": [
         {
           "anchor": "Eternum App",
-          "href": "https://eternum-staging.frostnova.moe",
+          "href": "https://eternum.archivecircle.xyz",
           "icon": "external-link"
         },
         {
@@ -107,7 +107,7 @@
     "primary": {
       "type": "button",
       "label": "Open Eternum",
-      "href": "https://eternum-staging.frostnova.moe"
+      "href": "https://eternum.archivecircle.xyz"
     }
   },
   "contextual": {

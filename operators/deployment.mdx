@@ -33,5 +33,5 @@ Do not expose PostgreSQL, Redis, release Redis, or MinIO data ports publicly. Pr
 </Warning>
 
 <Info>
-The API poller currently runs in-process. Multiple API replicas require a distributed lock or a separate worker model to avoid duplicate escalation work.
+The API poller runs in-process with a Redis-backed distributed lock (`SET NX EX`, 40s TTL). Only one instance executes escalation work per 30-second tick, so horizontal scaling of the API is safe.
 </Info>

@@ -6,6 +6,18 @@ icon: "gauge"
 
 The admin pipeline dashboard is used to inspect and operate death verification cases.
 
+## Accessing the panel
+
+The admin panel lives at `/app/admin/deaths` on a dedicated subdomain, `admin-eternum.archivecircle.xyz`, kept separate from the customer app (`eternum.archivecircle.xyz`). Three layers control access:
+
+- **Edge gate** — Cloudflare Access protects the admin subdomain with a one-time PIN sent to allowlisted emails, before any request reaches the app.
+- **Host routing** — Next.js middleware (`web/middleware.ts`) serves the admin UI only on the admin host; the customer host redirects `/app/admin/*` to the vault. This is UI separation, not an authorization boundary.
+- **API authorization** — the API checks the signed-in user's email against `ADMIN_EMAILS` on every admin request, independent of which host served the page.
+
+<Info>
+The Cloudflare Access email and `ADMIN_EMAILS` are independent. A user must pass the edge gate to load the panel and have an `ADMIN_EMAILS` account to perform admin actions.
+</Info>
+
 ## Admin tasks
 
 Admins can:
@@ -13,7 +25,7 @@ Admins can:
 - View verification cases
 - Review death certificate uploads
 - Approve or deny certificate evidence
-- Trigger pipeline presets in development or staging
+- Trigger pipeline presets for testing (admin-gated, available in all environments)
 - Resolve contests during the challenge window
 
 ## Pipeline states
