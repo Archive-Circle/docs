@@ -1,0 +1,102 @@
+---
+title: "ChainLens workflows"
+description: "Use ChainLens to inspect pair activity, filter wallets, analyze liquidity, and share views."
+icon: "route"
+---
+
+This page describes common ChainLens workflows in the web app.
+
+## Inspect a live pair
+
+<Steps>
+  <Step title="Choose the chain">
+    Select Solana, Ethereum, Base, Arbitrum, or BNB Chain.
+  </Step>
+  <Step title="Enter the pool address">
+    Paste a pool address into the pair input. On supported paths, a token address can resolve to the highest-liquidity pool on the selected chain.
+  </Step>
+  <Step title="Read the summary cards">
+    Start with buy volume, sell volume, LP added, LP removed, unique wallets, and largest event. These summarize the selected window.
+  </Step>
+  <Step title="Scan the live tape">
+    Review swaps and liquidity events in chronological order. Sort by time, USD value, or native value when you need a different view.
+  </Step>
+</Steps>
+
+## Focus on whales
+
+ChainLens accents events at or above $50,000 in USD value. To focus on large moves:
+
+1. Set **Min USD** to `$10K`, `$100K`, or a custom value.
+2. Sort by **USD**.
+3. Review highlighted rows in the tape.
+4. Open the transaction link when a real provider returned an explorer-compatible transaction hash.
+
+## Compare buyers and sellers
+
+Use the Top Buyers and Top Sellers cards to see which wallets dominate the selected window.
+
+- Top Buyers are ranked by total buy volume.
+- Top Sellers are ranked by total sell volume.
+- Each row shows wallet identity when known, USD total, event count, and share.
+
+Click a leaderboard row to filter the event tape to that wallet. Click it again, or clear the wallet filter, to return to the full pair view.
+
+## Analyze liquidity providers
+
+Use the Top LP card when you want to understand who is adding or removing liquidity.
+
+Top LP rows show:
+
+- Total liquidity added
+- Total liquidity removed
+- Net liquidity
+- Event count
+- Share bar
+
+This helps distinguish active liquidity providers from wallets that only swap.
+
+## Use custom ranges
+
+Custom ranges are useful when you want to inspect activity around a launch, announcement, or volatility event.
+
+<Steps>
+  <Step title="Select custom timeframe">
+    Choose the custom range option instead of a preset.
+  </Step>
+  <Step title="Set from and to">
+    Pick the exact start and end date/time. ChainLens supports second-level precision.
+  </Step>
+  <Step title="Keep the range within 7 days">
+    The API rejects windows longer than 7 days.
+  </Step>
+</Steps>
+
+<Note>
+Auto-refresh is disabled for custom ranges because the selected window is fixed.
+</Note>
+
+## Share an investigation view
+
+The web app syncs state to URL query parameters. After you select a chain, pair, timeframe, filters, sort order, and optional wallet, copy the URL and share it with another user.
+
+The shared URL can include:
+
+```text
+?chain=solana&pair=...&tf=1h&type=buy,sell&sort=usd&minUsd=1000&wallet=...
+```
+
+For custom ranges, URLs include `from` and `to` epoch seconds.
+
+## Diagnose provider mode
+
+The provider badge tells you where events came from:
+
+| Badge | Meaning |
+| --- | --- |
+| Alchemy RPC | EVM events came from Alchemy. |
+| Helius API | Solana events came from Helius. |
+| Public RPC | Events came from a public RPC fallback. |
+| Synthetic | The API returned mock data because real sources were unavailable. |
+
+If you see synthetic data when you expect real events, check provider keys, RPC health, the pool address, and the selected chain.

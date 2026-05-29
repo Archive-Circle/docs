@@ -1,0 +1,78 @@
+---
+title: "ChainLens configuration"
+description: "Configure ChainLens providers, public RPC fallbacks, CORS, rate limits, and frontend API access."
+icon: "sliders"
+---
+
+ChainLens reads configuration from environment variables. Copy `.env.example` to `.env` for local development when you need to override defaults.
+
+<Warning>
+Never commit real API keys, provider tokens, private RPC URLs, deployment keys, or production secrets. Keep production values outside git.
+</Warning>
+
+## Provider keys
+
+These keys are optional. ChainLens can run without them by using public RPC endpoints.
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `HELIUS_API_KEY` | No | Uses Helius enhanced transactions for faster Solana event parsing. |
+| `ALCHEMY_API_KEY` | No | Uses Alchemy RPC for Ethereum, Base, Arbitrum, and BNB Chain event fetching. |
+
+When a key is present, ChainLens prefers that provider. When it is missing, ChainLens falls back to public RPC for real on-chain data.
+
+## Public RPC overrides
+
+Use these only when you want ChainLens to call your own RPC endpoint instead of the built-in public defaults.
+
+| Variable | Chain |
+| --- | --- |
+| `PUBLIC_RPC_SOLANA` | Solana |
+| `PUBLIC_RPC_ETHEREUM` | Ethereum |
+| `PUBLIC_RPC_BASE` | Base |
+| `PUBLIC_RPC_ARBITRUM` | Arbitrum |
+| `PUBLIC_RPC_BNB` | BNB Chain |
+
+Public RPC variables can contain comma-separated endpoint lists. ChainLens retries endpoints and uses the first successful response.
+
+## API server
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `PORT` | `8787` | API listen port. |
+| `HOST` | `127.0.0.1` | API listen host. |
+| `ALLOWED_ORIGINS` | Local Vite origins | Comma-separated browser origins allowed by CORS. |
+| `RATE_LIMIT_MAX` | `60` | Per-IP limit for the events endpoint. |
+| `RATE_LIMIT_WINDOW` | `1 minute` | Rate-limit window for the events endpoint. |
+
+The rate limit applies to `GET /api/pair/:address/events`, which fans out to upstream RPC providers. `GET /api/health` and pair resolution are not rate-limited. `127.0.0.1` is allow-listed for local development.
+
+<Info>
+Requests without an `Origin` header, such as server-to-server calls or `curl`, are allowed by the API CORS logic. Browser requests must match `ALLOWED_ORIGINS`.
+</Info>
+
+## Pricing and Solana RPC
+
+| Variable | Purpose |
+| --- | --- |
+| `JUPITER_PRICE_URL` | Overrides the Jupiter Price API base URL used for Solana token pricing. |
+| `SOLANA_RPC_URL` | Legacy Solana RPC endpoint used by the Helius fallback path. |
+
+ChainLens uses Jupiter for Solana token prices, Coingecko for EVM token prices, and hardcoded stable/native fallbacks when external pricing is unavailable.
+
+## Frontend
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `VITE_API_BASE_URL` | `http://127.0.0.1:8787` | API base URL used by the Vite web app. |
+
+The Vite dev server proxies `/api` automatically in local development.
+
+## Example local setup
+
+```bash
+cp .env.example .env
+npm run dev
+```
+
+For a local public-RPC-only run, leave `HELIUS_API_KEY` and `ALCHEMY_API_KEY` empty.

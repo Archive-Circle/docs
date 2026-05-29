@@ -1,0 +1,174 @@
+---
+title: "ChainLens API reference"
+description: "Resolve pairs, check provider health, and fetch filtered ChainLens activity events over HTTP."
+icon: "code"
+---
+
+The ChainLens API is a Fastify service. By default it listens on `http://127.0.0.1:8787`.
+
+## Health
+
+```http
+GET /api/health
+```
+
+Returns provider health information for every supported chain. Results are cached briefly to avoid probing upstream providers on every request.
+
+### Example response
+
+```json
+{
+  "ok": true,
+  "providers": {
+    "solana": {
+      "mode": "helius",
+      "reachable": true,
+      "latency_ms": 145,
+      "checked_at": "2026-05-29T12:34:56.789Z"
+    }
+  },
+  "chains": ["solana", "ethereum", "base", "arbitrum", "bnb"],
+  "ts": "2026-05-29T12:34:56.789Z"
+}
+```
+
+## Resolve a pair
+
+```http
+GET /api/pair/:address?chain=solana
+```
+
+Resolves a pool or token address into pair metadata.
+
+### Query parameters
+
+| Parameter | Required | Default | Values |
+| --- | --- | --- | --- |
+| `chain` | No | `solana` | `solana`, `ethereum`, `base`, `arbitrum`, `bnb` |
+
+### Response fields
+
+| Field | Description |
+| --- | --- |
+| `address` | Resolved pool address. |
+| `chain` | Chain identifier. |
+| `dex` | DEX or venue name. |
+| `native_symbol` | Chain native symbol, such as `SOL`, `ETH`, or `BNB`. |
+| `base_token` | Base token symbol and mint/address. |
+| `quote_token` | Quote token symbol and mint/address. |
+| `fee_tier_bps` | Fee tier in basis points when available, otherwise `null`. |
+| `resolved_from` | Diagnostic information about the input address and selected pool. |
+
+Invalid chains or invalid addresses return a `400` response.
+
+## Fetch events
+
+```http
+GET /api/pair/:address/events
+```
+
+Fetches events for the resolved pair, applies view filters, and returns summary metrics and leaderboards.
+
+### Query parameters
+
+| Parameter | Required | Default | Values |
+| --- | --- | --- | --- |
+| `chain` | No | `solana` | `solana`, `ethereum`, `base`, `arbitrum`, `bnb` |
+| `timeframe` | No | `1h` | `5m`, `15m`, `1h`, `4h`, `24h`, `7d`, `custom` |
+| `from` | For custom ranges | None | Epoch seconds |
+| `to` | For custom ranges | None | Epoch seconds |
+| `type` | No | `all` | `all`, `buy`, `sell`, `lp_add`, `lp_remove`, or comma-separated types |
+| `sort` | No | `time` | `time`, `usd`, `native` |
+| `minUsd` | No | `0` | Numeric USD threshold |
+| `wallet` | No | None | Wallet address |
+
+Custom ranges require both `from` and `to`. The maximum window is 7 days.
+
+### Example request
+
+```http
+GET /api/pair/0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640/events?chain=ethereum&timeframe=1h&type=buy,sell&sort=usd&minUsd=1000
+```
+
+This returns buy and sell events with USD value at or above `1000`, sorted by USD value.
+
+### Example custom range
+
+```http
+GET /api/pair/:address/events?chain=base&timeframe=custom&from=1700000000&to=1700003600
+```
+
+### Response shape
+
+```json
+{
+  "pair": {
+    "address": "0x...",
+    "chain": "ethereum",
+    "dex": "Uniswap V3",
+    "native_symbol": "ETH",
+    "base_token": { "symbol": "WETH", "mint": "0x..." },
+    "quote_token": { "symbol": "USDC", "mint": "0x..." },
+    "fee_tier_bps": 5
+  },
+  "resolved_from": {
+    "input_address": "0x...",
+    "input_kind": "pool",
+    "pool_address": "0x..."
+  },
+  "chain": "ethereum",
+  "timeframe": "1h",
+  "type": "buy,sell",
+  "sort": "usd",
+  "minUsd": 1000,
+  "wallet": null,
+  "from": "2026-05-29T11:34:56.789Z",
+  "to": "2026-05-29T12:34:56.789Z",
+  "summary": {
+    "lp_added_usd": 0,
+    "lp_removed_usd": 0,
+    "buy_volume_usd": 125000.25,
+    "sell_volume_usd": 98000.5,
+    "unique_wallets": 42,
+    "largest_event_usd": 50000,
+    "event_count": 87
+  },
+  "leaderboards": {
+    "top_buyers": [],
+    "top_sellers": [],
+    "top_lp": []
+  },
+  "events": [],
+  "provider": "alchemy",
+  "snapshot": null,
+  "generated_at": "2026-05-29T12:34:56.789Z"
+}
+```
+
+The `events` array is capped to the first 250 matching events.
+
+## Activity event shape
+
+| Field | Description |
+| --- | --- |
+| `event_id` | Stable event identifier. |
+| `type` | `buy`, `sell`, `lp_add`, or `lp_remove`. |
+| `wallet` | Wallet address. |
+| `wallet_label` | Known label when available, otherwise `null`. |
+| `token_in` | Input token symbol, address or mint, and amount. |
+| `token_out` | Output token symbol, address or mint, and amount. |
+| `usd_value` | Event value in USD. |
+| `native_value` | Event value in the chain native asset. |
+| `timestamp` | ISO timestamp. |
+| `tx_hash` | Transaction hash or signature. |
+| `block_number` | Block number when available. |
+
+## Common error responses
+
+| Status | Error | Cause |
+| --- | --- | --- |
+| `400` | `invalid_chain` | The `chain` parameter is not supported. |
+| `400` | `invalid_address` | The address does not match the selected chain format. |
+| `400` | `window_too_large` | The custom range is longer than 7 days. |
+| `400` | `custom_timeframe_requires_from_and_to` | `timeframe=custom` is missing `from` or `to`. |
+| `429` | Rate limit response | The events endpoint exceeded the configured per-IP limit. |

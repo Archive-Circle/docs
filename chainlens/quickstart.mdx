@@ -1,0 +1,93 @@
+---
+title: "ChainLens quickstart"
+description: "Install ChainLens, start the API and web app, and inspect your first DEX pair."
+icon: "rocket"
+---
+
+Use this guide to run ChainLens locally and open a live pair view.
+
+## Prerequisites
+
+- Node.js 20 or newer
+- npm 10 or newer
+- A terminal at the ChainLens repository root
+
+<Note>
+The app can run without `HELIUS_API_KEY` or `ALCHEMY_API_KEY`. Without those keys, ChainLens uses public RPC endpoints for real on-chain events and falls back to mock data only when real sources are unavailable.
+</Note>
+
+## Install and run
+
+<Steps>
+  <Step title="Install dependencies">
+    Run the workspace install from the repository root.
+
+    ```bash
+    npm install
+    ```
+  </Step>
+  <Step title="Create an optional environment file">
+    Copy the example file if you want to set provider keys, RPC overrides, CORS, or rate-limit settings.
+
+    ```bash
+    cp .env.example .env
+    ```
+  </Step>
+  <Step title="Start both apps">
+    Start the Fastify API and the Vite web app together.
+
+    ```bash
+    npm run dev
+    ```
+  </Step>
+  <Step title="Open the dashboard">
+    Visit `http://localhost:5173`, choose a chain, and paste a pool address. You can also use the sample pair chips in the UI.
+  </Step>
+</Steps>
+
+## Run services separately
+
+| Command | Purpose |
+| --- | --- |
+| `npm run dev:api` | Start the Fastify API on `http://127.0.0.1:8787` |
+| `npm run dev:web` | Start the Vite web app on `http://localhost:5173` |
+| `npm run typecheck` | Run TypeScript checks across workspaces |
+| `npm --workspace @chainlens/api run test` | Run the API Vitest suite |
+| `npm run build` | Build all workspaces with build scripts |
+
+## First pair workflow
+
+<Steps>
+  <Step title="Select a chain">
+    Pick Solana, Ethereum, Base, Arbitrum, or BNB Chain.
+  </Step>
+  <Step title="Paste a pool or token address">
+    ChainLens validates Solana base58 addresses and EVM `0x` addresses. If you paste a token address, ChainLens attempts to resolve the highest-liquidity pool for that token on the selected chain.
+  </Step>
+  <Step title="Choose a time window">
+    Use a preset window from `5m` through `7d`, or choose a custom range. Custom ranges support second-level precision and are capped at 7 days.
+  </Step>
+  <Step title="Filter the tape">
+    Filter by buy, sell, LP add, LP remove, minimum USD value, sort order, or wallet address.
+  </Step>
+  <Step title="Use the leaderboards">
+    Click a Top Buyer, Top Seller, or Top LP row to filter the tape to that wallet. Click again or clear the wallet filter to return to all events.
+  </Step>
+</Steps>
+
+## Local URLs
+
+| Service | URL |
+| --- | --- |
+| Web app | `http://localhost:5173` |
+| API health | `http://127.0.0.1:8787/api/health` |
+| Pair resolver | `http://127.0.0.1:8787/api/pair/:address?chain=solana` |
+
+## Troubleshooting quick checks
+
+| Symptom | Check |
+| --- | --- |
+| The web app cannot reach the API | Confirm the API is running on `127.0.0.1:8787` or set `VITE_API_BASE_URL`. |
+| Browser requests are rejected | Add the web app origin to `ALLOWED_ORIGINS`. Localhost ports `5173` and `5174` are allowed by default. |
+| Events refresh slowly | Add `HELIUS_API_KEY` or `ALCHEMY_API_KEY` for faster provider access and higher rate limits. |
+| A custom range fails | Make sure both `from` and `to` are set and the window is no longer than 7 days. |
