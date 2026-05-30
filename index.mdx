@@ -1,49 +1,32 @@
 ---
-title: "Eternum documentation"
-description: "Learn how Eternum protects encrypted vault data and coordinates digital inheritance recovery."
+title: "Archive Circle Documentation"
+description: "Documentation for Archive Circle products, protocols, and developer tools."
 ---
 
-Eternum is a zero-knowledge digital inheritance platform. You encrypt important records in your browser, distribute recovery shares to trusted contacts, and define beneficiaries who can recover the vault after death verification.
+Welcome to Archive Circle docs. Choose a product to get started.
 
-<Info>
-Eternum cannot read vault contents. The server stores encrypted data, encrypted recovery shares, and release state, but it never receives the plaintext vault key.
-</Info>
+<CardGroup cols={2}>
+  <Card title="Eternum" icon="vault" href="/eternum">
+    Secure digital legacy vaults, encrypted recovery shares, trusted contacts, and beneficiary recovery workflows.
+  </Card>
+  <Card title="ChainLens" icon="chart-network" href="/chainlens/overview">
+    Blockchain explorer and analytics documentation for indexing, querying, and operating ChainLens.
+  </Card>
+  <Card title="SplitBot" icon="split" href="/splitbot/overview">
+    Trustless group payment splitting on Ethereum through Telegram, Mini App flows, and escrow contracts.
+  </Card>
+  <Card title="Certiva" icon="certificate" href="/certiva/overview">
+    Institutional credential verification, blockchain anchoring, document integrity proofs, and public verification APIs.
+  </Card>
+</CardGroup>
+
+## Product areas
 
 <Columns cols={2}>
-  <Card title="Set up your vault" icon="vault" href="/quickstart">
-    Create an account, add encrypted vault items, and prepare recovery shares.
+  <Card title="User and operator guides" icon="book-open" href="/eternum/quickstart">
+    Start with product quickstarts, common workflows, configuration references, and operations guides.
   </Card>
-  <Card title="Understand recovery" icon="key" href="/recovery/overview">
-    See how trusted contacts, beneficiaries, and death verification work together.
-  </Card>
-  <Card title="Review the security model" icon="shield" href="/security/zero-knowledge-model">
-    Learn what Eternum can and cannot decrypt.
-  </Card>
-  <Card title="Operate Eternum" icon="server" href="/operators/deployment">
-    Deploy the API, web app, database, Redis, and object storage services.
+  <Card title="APIs and technical references" icon="code" href="/chainlens/api-reference">
+    Review API contracts, smart contract interfaces, verification endpoints, and integration details.
   </Card>
 </Columns>
-
-## How Eternum works
-
-<Steps>
-  <Step title="Create a local vault key">
-    Your browser derives a master key from your PIN or password using Argon2id.
-  </Step>
-  <Step title="Encrypt vault items before upload">
-    Each vault item is encrypted in the browser with AES-GCM before it leaves your device.
-  </Step>
-  <Step title="Split recovery shares">
-    Your browser splits the master key into Shamir Secret Sharing recovery shares.
-  </Step>
-  <Step title="Release shares after verification">
-    If death verification completes, trusted contacts release beneficiary-bound recovery shares.
-  </Step>
-  <Step title="Recover in the beneficiary browser">
-    Beneficiaries combine enough shares in-browser to reconstruct the master key and decrypt vault items.
-  </Step>
-</Steps>
-
-<Warning>
-If you lose your credential and do not have enough recovery shares available later, Eternum cannot recover the vault for you.
-</Warning>
