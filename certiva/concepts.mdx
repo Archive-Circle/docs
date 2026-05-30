@@ -1,6 +1,6 @@
 ---
 title: "Concepts"
-description: "Core concepts behind Certiva's credential registry, verification model, and admin hierarchy."
+description: "Credential lifecycle, verification modes, blockchain anchoring, document proofs, admin roles, and the audit trail."
 icon: "book-open"
 ---
 
@@ -8,111 +8,133 @@ icon: "book-open"
 
 ### Issuance
 
-When an operator submits a credential, Certiva:
+When an operator submits a credential, Certiva synchronously:
 
-1. Generates a unique `verificationId` and `verificationCode`.
-2. Produces a compact QR payload (JSON) encoding the verification reference.
-3. Computes a SHA-256 registry hash of the credential record.
-4. Generates a metadata URI pointing to structured credential metadata.
-5. Builds a public verification URL accessible without authentication.
-6. Stores QR code image and metadata in Cloudflare R2 (or local filesystem in dev).
-7. Optionally anchors the credential to the blockchain (Polygon Amoy) via the background worker.
+1. Generates a unique `verificationId` (e.g. `vrf_2f9a0cdbe7c1`) and a short `verificationCode` (e.g. `CERT-A1B2C3`).
+2. Computes a SHA-256 registry hash of the credential record.
+3. Builds a compact QR payload encoding the verification reference.
+4. Generates a public `verificationUrl` and a `qrCodeUri`.
+5. Stores the QR image and credential metadata in Cloudflare R2 (or local filesystem in development).
+6. Writes the credential to the PostgreSQL registry with `anchorStatus: PENDING`.
 
-### Verification
+The background worker then picks up a `credentialAnchor` job from the BullMQ queue, signs the credential hash with the issuer wallet, and submits a transaction to the `CredentialRegistry` smart contract on Polygon Amoy. Once confirmed, the credential record is updated to `anchorStatus: ANCHORED` with `txHash` and `blockNumber`.
 
-Public verification requires no authentication:
+Credentials are immediately verifiable after issuance — blockchain anchoring is non-blocking.
 
-1. The verifier presents a verification code, scans a QR code, or visits the verification URL.
-2. The API resolves the credential by code, ID, or QR reference.
-3. The registry status is checked: `VALID`, `REVOKED`, or `NOT_FOUND`.
-4. A structured result is returned to the verifier.
-5. A `VerificationLog` entry is written with the verifier's IP and user-agent.
+### Verification results
+
+| Result | Meaning |
+|---|---|
+| `VALID` | Credential is active and unrevoked |
+| `REVOKED` | Credential has been revoked by the institution |
+| `NOT_FOUND` | No matching credential found in the registry |
+| `INVALID` | Document hash does not match the stored proof (SECURE_PDF mode) |
 
 ### Revocation
 
-Operators with the `OWNER`, `SUPER_ADMIN`, or `ADMIN` role can revoke credentials. Revocation reasons:
+Revoked credentials remain in the registry permanently. They return `result: REVOKED` on verification instead of being deleted. Every revocation requires a reason:
 
-| Reason | Description |
+| Reason | When to use |
 |---|---|
 | `DATA_CORRECTION` | Credential contained incorrect data |
-| `ISSUED_IN_ERROR` | Credential should not have been issued |
+| `ISSUED_IN_ERROR` | Should not have been issued |
 | `FRAUD_SUSPECTED` | Suspected fraudulent use |
 | `INSTITUTION_REQUEST` | Institution policy decision |
 | `OTHER` | Catch-all |
 | `LEGACY` | Historical import |
 
-Revoked credentials remain in the registry and return `REVOKED` on verification rather than being deleted.
+## Verification modes
+
+### CORE_REGISTRY
+
+The standard mode. The verifier presents a `verificationCode`, scans a QR code, or visits the `verificationUrl`. Certiva looks up the credential by its `verificationCode` or `verificationId` and returns the registry record.
+
+```json
+{
+  "verificationMode": "CORE_REGISTRY",
+  "result": "VALID",
+  "verificationCode": "CERT-A1B2C3",
+  "blockchainVerified": true,
+  "txHash": "0x3a7f2e...c4d1b8"
+}
+```
+
+### SECURE_PDF
+
+The verifier uploads the credential PDF. Certiva computes its SHA-256 hash and compares it against the stored `CredentialDocumentProof` record. A byte-level match returns `VALID`; any modification returns `INVALID`.
+
+```json
+{
+  "verificationMode": "SECURE_PDF",
+  "result": "VALID"
+}
+```
 
 ## Document integrity proof
 
-Certiva supports a separate document proof workflow independent of credentials:
+Independent of credentials, institutions can register a SHA-256 proof for any document:
 
-1. The operator uploads a document (PDF or other file).
-2. Certiva computes a SHA-256 hash and stores it as a `SecureDocumentProof` record.
-3. The source file is discarded — only the hash is retained.
-4. Verifiers submit the same document for comparison.
+1. The operator uploads a file via `POST /api/document-proofs`.
+2. Certiva hashes the file and stores a `SecureDocumentProof` record — the source file is discarded.
+3. The operator shares the returned `verificationCode` or QR code with document holders.
+4. Verifiers submit the same document to `POST /api/document-proofs/verify/document`.
 5. Certiva hashes the submission and compares it to the stored record.
-6. The result is `VALID` (hash match) or `INVALID` / `NOT_FOUND`.
 
-This mechanism allows any holder of the original document to prove it has not been altered, without the issuer needing to store the file.
+This allows any holder of the original document to prove it has not been altered without the institution needing to store the file.
+
+## Batch issuance
+
+Batch issuance processes a CSV file asynchronously via BullMQ:
+
+1. Operator uploads CSV to `POST /api/credentials/bulk`.
+2. An `issuance` queue job is created and the API returns a `batchId` immediately.
+3. The worker processes rows with 5 concurrent workers, generating all assets per credential.
+4. Failed rows are retried via the `retry` queue.
+5. Progress and per-row results are tracked in an `IssuanceBatch` record, readable at `GET /api/batches/:id`.
+
+## Blockchain anchoring
+
+Blockchain anchoring is optional (controlled by `BLOCKCHAIN_ENABLED`) and works as a secondary integrity layer:
+
+- Only the credential hash is stored on-chain — no personal data, student IDs, PDFs, or private metadata.
+- The `CredentialRegistry` Solidity contract on Polygon Amoy exposes `anchorCredential()`, `revokeCredential()`, and `verifyCredential()`.
+- The worker uses the issuer wallet (`ISSUER_WALLET`) signed by `PRIVATE_KEY` to submit transactions.
+- Anchoring is non-blocking: `anchorStatus` starts as `PENDING` and transitions to `ANCHORED` after the transaction is confirmed.
+- Blockchain-specific audit logs are available at `GET /api/audit/blockchain`.
 
 ## Admin role hierarchy
 
-| Role | Capabilities |
+| Role | What they can do |
 |---|---|
-| `OWNER` | Full control including admin management, settings, revocation, and audit log access |
-| `SUPER_ADMIN` | Credential issuance, revocation, admin management, settings, audit logs |
-| `ADMIN` | Credential issuance, document proofs, verification logs, read-only settings |
-| `AUDITOR` | Read-only access to credentials, documents, verification logs, audit logs, and settings |
+| `OWNER` | Everything: admin management, settings, issuance, revocation, audit logs |
+| `SUPER_ADMIN` | Issuance, revocation, admin management, settings, audit logs |
+| `ADMIN` | Issuance, document proofs, verification logs, read-only settings |
+| `AUDITOR` | Read-only: credentials, documents, verification logs, audit logs, settings |
 
 ### Ownership constraints
 
 - The last active `OWNER` account cannot be deleted, disabled, or demoted.
-- Only an `OWNER` can promote another admin to `OWNER`.
+- Only an `OWNER` can elevate another admin to `OWNER`.
 - Non-`OWNER` admins cannot modify or delete `OWNER` accounts.
-- An admin cannot disable their own account.
-- Admins with any historical activity record can only be disabled, not deleted.
-
-## Batch issuance
-
-Operators can issue many credentials in a single operation by uploading a CSV file. The batch is processed asynchronously by the worker:
-
-1. Operator uploads CSV via `POST /api/credentials/bulk`.
-2. A job is enqueued on the `issuance` BullMQ queue.
-3. The worker processes credentials from the CSV, generating all assets for each.
-4. Results are tracked in an `IssuanceBatch` record, accessible via `GET /api/batches/:id`.
-5. Failed rows are retried via the `retry` queue.
-
-## Blockchain anchoring
-
-Blockchain anchoring is an optional secondary integrity layer:
-
-- Credential issuance and revocation events are recorded on the `CredentialRegistry` smart contract (Polygon Amoy testnet).
-- Only the credential hash is stored on-chain — no personal data, student IDs, PDFs, or private metadata.
-- The `credentialAnchor` BullMQ queue handles anchoring with 3 concurrent workers.
-- Anchoring is non-blocking: credentials are usable immediately after issuance regardless of blockchain status.
-- Blockchain audit logs are separately accessible via `GET /api/audit/blockchain`.
+- Admins with any historical activity can only be disabled, not deleted.
 
 ## Audit trail
 
-Every significant action in Certiva produces an `AuditLog` entry. The audit log is append-only — there are no update or delete endpoints.
-
-Tracked actions include:
+Every significant action produces an `AuditLog` entry. The log is append-only — no update or delete endpoint exists. Tracked actions include:
 
 - `LOGIN_SUCCESS`, `LOGIN_FAILURE`, `LOGOUT`
-- `ADMIN_CREATED`, `ADMIN_UPDATED`, `ADMIN_DELETED`, `ADMIN_DISABLED`
 - `CREDENTIAL_ISSUED`, `CREDENTIAL_REVOKED`, `CREDENTIAL_DELETED`
 - `DOCUMENT_PROOF_CREATED`, `DOCUMENT_PROOF_DELETED`
-- `SETTINGS_UPDATED`
-- `FORBIDDEN_ATTEMPT`
+- `ADMIN_CREATED`, `ADMIN_UPDATED`, `ADMIN_DELETED`, `ADMIN_DISABLED`
+- `SETTINGS_UPDATED`, `FORBIDDEN_ATTEMPT`
 
-## Storage abstraction
+Audit logs never contain JWTs, cookies, passwords, database URLs, private keys, or file contents.
 
-Asset storage (QR code images, credential metadata) is handled by a `StorageService` with two drivers:
+## Storage
 
-| Driver | Environment | Notes |
+Asset storage (QR images, credential metadata) is abstracted behind a `StorageService` with two drivers:
+
+| Driver | When | Notes |
 |---|---|---|
-| `local` | Development only | Stores files on the local filesystem |
-| `r2` | Staging and production | Cloudflare R2 (S3-compatible object storage) |
-
-The `r2` driver is enforced by environment validation in staging and production.
+| `local` | Development only | Stores to `ASSET_STORAGE_ROOT` on the local filesystem |
+| `r2` | Staging and production | Cloudflare R2 (S3-compatible). Enforced by env validation in staging/prod. |

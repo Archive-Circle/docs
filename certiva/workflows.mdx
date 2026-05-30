@@ -1,6 +1,6 @@
 ---
 title: "Workflows"
-description: "Common operator workflows for credential issuance, verification, and administration."
+description: "Step-by-step instructions for the most common Certiva operator tasks."
 icon: "arrow-progress"
 ---
 
@@ -8,186 +8,213 @@ icon: "arrow-progress"
 
 <Steps>
   <Step title="Authenticate">
-    Log in as an admin with `OWNER`, `SUPER_ADMIN`, or `ADMIN` role.
+    ```bash
+    curl -X POST https://api.certiva.io/api/auth/login \
+      -H "Content-Type: application/json" \
+      -d '{"username": "admin", "password": "your-password"}'
+    ```
+
+    ```json
+    { "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." }
+    ```
+
+    <Tip>
+      The API also sets an `httpOnly` cookie (`certiva_access_token`). Dashboard requests use the cookie automatically — no manual header needed.
+    </Tip>
   </Step>
+
   <Step title="Submit the credential">
     ```bash
-    POST /api/credentials
-    Content-Type: application/json
-    Cookie: certiva_access_token=<token>
+    curl -X POST https://api.certiva.io/api/credentials \
+      -H "Content-Type: application/json" \
+      -H "Authorization: Bearer <accessToken>" \
+      -d '{
+        "studentName": "Siti Rahayu",
+        "studentId": "2020045678",
+        "degree": "Bachelor of Computer Science",
+        "graduationYear": 2024
+      }'
+    ```
 
+    ```json
     {
-      "recipientName": "Siti Rahayu",
-      "recipientEmail": "siti@example.com",
-      "credentialTitle": "Bachelor of Computer Science",
-      "issuedAt": "2024-06-01"
+      "id": "clx9k2...",
+      "verificationId": "vrf_2f9a0cdbe7c1",
+      "verificationCode": "CERT-A1B2C3",
+      "verificationUrl": "https://certiva.io/verify/vrf_2f9a0cdbe7c1",
+      "qrCodeUri": "https://api.certiva.io/api/credentials/<id>/qr",
+      "anchorStatus": "PENDING",
+      "issuedAt": "2024-06-01T08:00:00.000Z"
     }
     ```
   </Step>
-  <Step title="Retrieve the result">
-    The response includes `verificationId`, `verificationCode`, `verificationUrl`, and a QR code URL.
+
+  <Step title="Share with the recipient">
+    Give the credential holder the `verificationCode`, `verificationUrl`, or QR code. All three resolve to the same credential record.
   </Step>
 </Steps>
 
 ## Issue credentials in bulk (CSV)
 
 <Steps>
-  <Step title="Prepare a CSV file">
-    Structure your CSV according to the expected column headers. Verify with maintainer for exact schema.
-  </Step>
   <Step title="Upload the CSV">
     ```bash
-    POST /api/credentials/bulk
-    Content-Type: multipart/form-data
-    Cookie: certiva_access_token=<token>
+    curl -X POST https://api.certiva.io/api/credentials/bulk \
+      -H "Authorization: Bearer <accessToken>" \
+      -F "file=@credentials.csv"
+    ```
+
+    ```json
+    {
+      "batchId": "batch_8f3c...",
+      "status": "QUEUED",
+      "totalRows": 250
+    }
     ```
   </Step>
-  <Step title="Poll batch status">
+
+  <Step title="Poll batch progress">
     ```bash
-    GET /api/batches/:batchId
-    Cookie: certiva_access_token=<token>
+    curl https://api.certiva.io/api/batches/batch_8f3c... \
+      -H "Authorization: Bearer <accessToken>"
     ```
-    Monitor the `IssuanceBatch` record for processing progress and any failed rows.
+
+    ```json
+    {
+      "batchId": "batch_8f3c...",
+      "status": "PROCESSING",
+      "totalRows": 250,
+      "processedRows": 143,
+      "failedRows": 2
+    }
+    ```
+
+    Poll until `status` is `COMPLETED` or `FAILED`. Failed rows include per-row error details.
   </Step>
 </Steps>
 
-## Verify a credential (public)
+## Verify a credential publicly
 
-Verification requires no authentication. Three methods are available:
+No authentication required for any verification endpoint.
 
 ### By verification code
 
 ```bash
-POST /api/verify/credential/code
-Content-Type: application/json
+curl -X POST https://api.certiva.io/api/verify/credential/code \
+  -H "Content-Type: application/json" \
+  -d '{"verificationCode": "CERT-A1B2C3"}'
+```
 
+```json
 {
-  "code": "<verificationCode>"
+  "verificationMode": "CORE_REGISTRY",
+  "result": "VALID",
+  "revoked": false,
+  "degree": "Bachelor of Computer Science",
+  "issuedAt": "2024-06-01T08:00:00.000Z",
+  "issuer": { "name": "Universitas Contoh", "status": "ACTIVE" },
+  "blockchainVerified": true,
+  "txHash": "0x3a7f2e...c4d1b8",
+  "blockNumber": 14203847,
+  "anchoredAt": "2024-06-01T08:04:12.000Z"
 }
 ```
 
-### By file upload (document comparison)
+### By PDF upload
 
 ```bash
-POST /api/verify/credential/pdf
-Content-Type: multipart/form-data
-
-file=<credential-pdf>
+curl -X POST https://api.certiva.io/api/verify/credential/pdf \
+  -F "file=@credential.pdf"
 ```
 
-### By verification URL
-
-Direct browser access to the credential's `verificationUrl` renders a human-readable verification result page.
+Rate limited to 10 requests per 60 seconds.
 
 ## Register a document integrity proof
 
 <Steps>
   <Step title="Upload the document">
     ```bash
-    POST /api/document-proofs
-    Content-Type: multipart/form-data
-    Cookie: certiva_access_token=<token>
-
-    file=<document>
+    curl -X POST https://api.certiva.io/api/document-proofs \
+      -H "Authorization: Bearer <accessToken>" \
+      -F "file=@transcript.pdf"
     ```
-    Certiva hashes the document and discards the source file.
+
+    ```json
+    {
+      "id": "dp_7a3f...",
+      "verificationCode": "DOC-X9Y8Z7",
+      "qrCodeUri": "https://api.certiva.io/api/document-proofs/dp_7a3f.../qr"
+    }
+    ```
+
+    Certiva hashes the document and discards the source file. Only the SHA-256 hash is stored.
   </Step>
-  <Step title="Distribute the verification code">
-    Share the returned `verificationCode` or QR code with document holders.
+
+  <Step title="Share the verification code">
+    Give document holders the `verificationCode` or QR code. Anyone can verify the document has not been modified.
   </Step>
 </Steps>
 
-## Verify a document proof (public)
+## Verify a document proof publicly
 
 ```bash
-POST /api/document-proofs/verify/document
-Content-Type: multipart/form-data
-
-file=<document-to-verify>
-code=<verificationCode>
+curl -X POST https://api.certiva.io/api/document-proofs/verify/document \
+  -F "file=@transcript.pdf" \
+  -F "code=DOC-X9Y8Z7"
 ```
 
-Returns `VALID` if the file hash matches the stored proof, or `INVALID` / `NOT_FOUND`.
+```json
+{
+  "result": "VALID",
+  "verificationMode": "SECURE_PDF"
+}
+```
+
+Returns `VALID` on a byte-level hash match, `INVALID` if the file has been modified, or `NOT_FOUND` if no matching proof exists.
 
 ## Revoke a credential
 
 ```bash
-PATCH /api/credentials/:id/revoke
-Content-Type: application/json
-Cookie: certiva_access_token=<token>
-
-{
-  "reason": "DATA_CORRECTION"
-}
+curl -X PATCH https://api.certiva.io/api/credentials/<id>/revoke \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <accessToken>" \
+  -d '{"reason": "DATA_CORRECTION"}'
 ```
 
 Valid reasons: `DATA_CORRECTION`, `ISSUED_IN_ERROR`, `FRAUD_SUSPECTED`, `INSTITUTION_REQUEST`, `OTHER`, `LEGACY`.
 
-## Bulk revoke credentials
+After revocation, public verification returns `result: REVOKED` permanently.
+
+## Bulk revoke
 
 ```bash
-POST /api/credentials/bulk-revoke
-Content-Type: application/json
-Cookie: certiva_access_token=<token>
-
-{
-  "ids": ["<credentialId1>", "<credentialId2>"],
-  "reason": "INSTITUTION_REQUEST"
-}
+curl -X POST https://api.certiva.io/api/credentials/bulk-revoke \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <accessToken>" \
+  -d '{
+    "ids": ["clx9k2...", "clx9k3..."],
+    "reason": "INSTITUTION_REQUEST"
+  }'
 ```
 
-## Manage admins
+## Create an admin account
 
-### Create an admin (OWNER or SUPER_ADMIN only)
+Requires `OWNER` or `SUPER_ADMIN` role.
 
 ```bash
-POST /api/auth/register
-Content-Type: application/json
-Cookie: certiva_access_token=<token>
-
-{
-  "username": "newadmin",
-  "password": "<strong-password>",
-  "role": "ADMIN"
-}
+curl -X POST https://api.certiva.io/api/auth/register \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <accessToken>" \
+  -d '{
+    "username": "auditor1",
+    "password": "strong-password-here",
+    "role": "AUDITOR"
+  }'
 ```
-
-### Update an admin
-
-```bash
-PATCH /api/auth/admins/:id
-Content-Type: application/json
-Cookie: certiva_access_token=<token>
-
-{
-  "role": "AUDITOR"
-}
-```
-
-### Disable an admin
-
-```bash
-PATCH /api/auth/admins/:id
-Content-Type: application/json
-Cookie: certiva_access_token=<token>
-
-{
-  "disabled": true
-}
-```
-
-## Export audit logs
-
-```bash
-GET /api/audit/dashboard/export
-Cookie: certiva_access_token=<token>
-```
-
-Returns a downloadable audit export. Format: verify with maintainer.
 
 ## Migrate assets from local storage to R2
 
-A one-time migration script is provided for moving assets from the local driver to Cloudflare R2:
+A one-time migration script moves all credential assets from the local filesystem driver to Cloudflare R2. Run this once during the transition to staging or production:
 
 ```bash
 cd apps/api
@@ -195,24 +222,21 @@ npx tsx scripts/migrate-assets-to-r2.ts
 ```
 
 <Warning>
-Run this script only once, in a maintenance window, with valid R2 credentials configured. Verify all assets in R2 before switching `STORAGE_DRIVER=r2` in production.
+  Run in a maintenance window with valid R2 credentials configured. Verify all assets are present in R2 before switching `STORAGE_DRIVER=r2` in production.
 </Warning>
-
-## Database backup
-
-A backup script is provided at the repository root:
-
-```bash
-bash scripts/backup.sh
-```
-
-Verify with maintainer for backup destination and retention configuration.
 
 ## Rebuild credential assets
 
-If QR codes or metadata for a credential become stale after configuration changes:
+If QR codes or metadata become stale after a URL configuration change:
 
 ```bash
-POST /api/credentials/:id/rebuild-assets
-Cookie: certiva_access_token=<token>
+curl -X POST https://api.certiva.io/api/credentials/<id>/rebuild-assets \
+  -H "Authorization: Bearer <accessToken>"
+```
+
+## Export audit logs
+
+```bash
+curl https://api.certiva.io/api/audit/dashboard/export \
+  -H "Authorization: Bearer <accessToken>"
 ```

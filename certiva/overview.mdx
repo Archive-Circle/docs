@@ -1,57 +1,78 @@
 ---
 title: "Overview"
-description: "Certiva is a credential verification platform for institutions that need controlled issuance, public verification, document integrity proof, and audit-ready operational records."
+description: "Certiva is an institutional credential verification platform. Issue, anchor, and verify academic credentials with full blockchain audit trails and tamper-evident document proofing."
 icon: "certificate"
 ---
 
-## What is Certiva?
+Certiva enables institutions to issue academic and professional credentials into a tamper-evident registry. Every credential gets a unique verification code, a QR payload, and a public verification URL. Employers, regulators, and other institutions verify authenticity in seconds — no Certiva account required.
 
-Certiva is an institutional credential registry and verification system. Institutions issue academic or professional credentials into a tamper-evident registry. Each credential carries structured metadata, a verification identifier, a QR payload, and a public verification URL.
+## Who is it for?
 
-Relying parties — employers, other institutions, or verification services — can confirm credential authenticity without contacting the issuing institution directly.
+**Institutions** issue credentials individually or in bulk, manage their registry, attach document proofs, and review complete audit logs of every verification attempt.
+
+**Employers and regulators** verify credentials publicly using a verification code, QR scan, or PDF upload — without a platform account.
+
+**Administrators** manage team roles, institution settings, and access controls through a four-tier role hierarchy.
 
 ## Key capabilities
 
 <CardGroup cols={2}>
   <Card title="Credential registry" icon="database">
-    Issue credentials with unique verification codes, QR payloads, and public URLs.
-  </Card>
-  <Card title="Document integrity proof" icon="file-shield">
-    SHA-256 hash-based proof records for uploaded documents, verifiable by file re-upload.
-  </Card>
-  <Card title="Role-based administration" icon="users-gear">
-    Four-tier admin hierarchy: Owner, Super Admin, Admin, Auditor.
-  </Card>
-  <Card title="Append-only audit trail" icon="scroll">
-    Full lifecycle audit log covering credential, admin, and settings events.
-  </Card>
-  <Card title="Batch issuance" icon="table">
-    CSV-driven bulk credential issuance via background job queue.
+    Issue credentials with unique verification codes, QR payloads, and public verification URLs backed by a PostgreSQL registry.
   </Card>
   <Card title="Blockchain anchoring" icon="link">
-    Optional credential anchoring to Polygon Amoy testnet for secondary integrity proof.
+    Every credential hash is anchored to Polygon Amoy testnet. Verification returns the transaction hash, block number, and anchor timestamp.
+  </Card>
+  <Card title="Document integrity proof" icon="file-shield">
+    Register a SHA-256 hash of any document. Verifiers re-upload the file — Certiva confirms whether it has been modified down to the byte level.
+  </Card>
+  <Card title="Batch issuance" icon="layer-group">
+    Upload a CSV to issue hundreds of credentials in a single operation. A background worker processes the batch and tracks per-row results.
+  </Card>
+  <Card title="Role-based access" icon="users-gear">
+    Four roles — Owner, Super Admin, Admin, Auditor — with enforced permission boundaries and an append-only audit trail.
+  </Card>
+  <Card title="Public verification" icon="globe">
+    Verification requires no login. Anyone with the code, QR code, or original PDF can confirm authenticity at any time.
   </Card>
 </CardGroup>
+
+## How verification works
+
+Public verification goes through two modes depending on what the verifier has:
+
+| Mode | Method | How it works |
+|---|---|---|
+| `CORE_REGISTRY` | Code, QR scan, or verification URL | Credential is looked up by `verificationCode` or `verificationId` in the registry |
+| `SECURE_PDF` | PDF upload | SHA-256 hash of the uploaded file is compared against the stored document proof |
+
+Both modes return a structured result with `result: VALID`, `REVOKED`, `INVALID`, or `NOT_FOUND`, plus blockchain proof fields when anchoring is enabled.
 
 ## Architecture
 
 Certiva is a pnpm monorepo orchestrated with Turborepo:
 
-| App / Package | Role |
-|---|---|
-| `apps/api` | NestJS 11 backend — auth, RBAC, credential registry, verification, audit |
-| `apps/web` | Next.js 16 operator dashboard and public verification UI |
-| `apps/worker` | BullMQ background processor — batch issuance, blockchain anchoring |
-| `packages/contracts` | Solidity smart contract and deployment artifacts |
-| `packages/types` | Shared TypeScript domain types |
-| `packages/ui` | Shared React component library |
-
-## Infrastructure requirements
-
-| Dependency | Version | Purpose |
+| App / Package | Stack | Role |
 |---|---|---|
-| PostgreSQL | 16 | Primary data store (Prisma ORM) |
-| Redis | 7 | BullMQ job queues and rate-limit cache |
-| Node.js | 20+ | Runtime |
-| Cloudflare R2 | — | Object storage (staging and production) |
-| Polygon Amoy RPC | — | Blockchain anchoring (optional) |
+| `apps/api` | NestJS 11, Prisma, PostgreSQL 16 | Auth, credential registry, verification, audit, institution settings |
+| `apps/web` | Next.js 16, Tailwind | Operator dashboard and public verification UI |
+| `apps/worker` | TypeScript, BullMQ | Background batch issuance and blockchain anchoring |
+| `packages/contracts` | Solidity, Hardhat | `CredentialRegistry` smart contract on Polygon Amoy |
+| `packages/types` | TypeScript | Shared domain types across apps |
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/certiva/quickstart">
+    Issue your first credential and run a public verification in four steps.
+  </Card>
+  <Card title="Concepts" icon="book-open" href="/certiva/concepts">
+    Understand the credential lifecycle, verification modes, and role hierarchy.
+  </Card>
+  <Card title="Configuration" icon="sliders" href="/certiva/configuration">
+    All environment variables for API, web, and worker.
+  </Card>
+  <Card title="API Reference" icon="code" href="/certiva/api-reference">
+    Full REST API with endpoint details and response shapes.
+  </Card>
+</CardGroup>

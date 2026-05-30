@@ -1,135 +1,293 @@
 ---
 title: "API Reference"
-description: "HTTP API endpoints exposed by the Certiva NestJS backend."
+description: "All Certiva REST API endpoints with request parameters and response shapes."
 icon: "code"
 ---
 
-The Certiva API is served by the NestJS application in `apps/api`. All routes are prefixed with `/api`.
+The Certiva API is a NestJS application served at `apps/api`. All routes are prefixed with `/api`.
 
-Authentication uses an `httpOnly` cookie named `certiva_access_token` set on successful login.
+Authentication uses a JWT returned on login. The API sets an `httpOnly` cookie (`certiva_access_token`) and also returns an `accessToken` in the response body. Protected endpoints accept either the cookie or a `Bearer` token in the `Authorization` header.
+
+---
+
+## Health
+
+### GET /api/health
+
+Public liveness check. No authentication required.
+
+```json
+{ "status": "ok" }
+```
+
+---
 
 ## Authentication
 
-### Login
+### POST /api/auth/login
 
-```
-POST /api/auth/login
-```
+Rate limited: **5 requests per 60 seconds** (configurable).
 
-**Body:**
+```bash
+curl -X POST /api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "your-password"}'
+```
 
 ```json
 {
-  "username": "string",
-  "password": "string"
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 }
 ```
 
-Sets `certiva_access_token` cookie on success. Rate limited: 5 requests per 60 seconds by default.
+Sets `certiva_access_token` as an `httpOnly`, `sameSite: lax` cookie.
 
-### Get current admin
-
-```
-GET /api/auth/me
-```
+### GET /api/auth/me
 
 Returns the authenticated admin's profile.
 
-### Register admin
+### POST /api/auth/register
 
-```
-POST /api/auth/register
-```
+Create a new admin. Requires `OWNER` or `SUPER_ADMIN` role.
 
-Requires `OWNER` or `SUPER_ADMIN` role.
+**Body:** `{ username, password, role }` — role is one of `OWNER`, `SUPER_ADMIN`, `ADMIN`, `AUDITOR`.
 
-### List admins
+### GET /api/auth/admins
 
-```
-GET /api/auth/admins
-```
+List all admins. Requires `OWNER` or `SUPER_ADMIN`.
 
-Requires `OWNER` or `SUPER_ADMIN` role.
+### PATCH /api/auth/admins/:id
 
-### Update admin
+Update an admin's role or disabled status. Requires `OWNER` or `SUPER_ADMIN`.
 
-```
-PATCH /api/auth/admins/:id
-```
+### DELETE /api/auth/admins/:id
 
-Requires `OWNER` or `SUPER_ADMIN` role.
-
-### Delete admin
-
-```
-DELETE /api/auth/admins/:id
-```
-
-Requires `OWNER` or `SUPER_ADMIN` role. Fails if the admin has historical activity — disable instead.
+Delete an admin. Requires `OWNER` or `SUPER_ADMIN`. Fails if the admin has any historical activity — disable instead.
 
 ---
 
 ## Credentials
 
-All credential endpoints require authentication.
+All credential write endpoints require authentication.
 
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/api/credentials` | Issue a single credential |
-| `POST` | `/api/credentials/bulk` | Issue credentials from a CSV file (multipart) |
-| `POST` | `/api/credentials/bulk-revoke` | Revoke multiple credentials |
-| `POST` | `/api/credentials/bulk-delete` | Delete multiple credentials |
-| `GET` | `/api/credentials` | List credentials |
-| `GET` | `/api/credentials/:id` | Get credential by ID |
-| `DELETE` | `/api/credentials/:id` | Delete credential |
-| `PATCH` | `/api/credentials/:id/revoke` | Revoke a credential with reason |
-| `POST` | `/api/credentials/:id/rebuild-assets` | Rebuild QR code and metadata |
-| `POST` | `/api/credentials/:id/secure-pdf` | Attach a secure PDF to credential |
-| `GET` | `/api/credentials/:id/metadata` | Retrieve credential metadata |
-| `GET` | `/api/credentials/:id/qr` | Retrieve QR code image |
+### POST /api/credentials
+
+Issue a single credential.
+
+**Body:**
+```json
+{
+  "studentName": "Ahmad Fauzi Ramadhan",
+  "studentId": "2019081234",
+  "degree": "Bachelor of Computer Science",
+  "graduationYear": 2024
+}
+```
+
+**Response:**
+```json
+{
+  "id": "clx9k2...",
+  "verificationId": "vrf_2f9a0cdbe7c1",
+  "verificationCode": "CERT-A1B2C3",
+  "verificationUrl": "https://certiva.io/verify/vrf_2f9a0cdbe7c1",
+  "qrCodeUri": "https://api.certiva.io/api/credentials/<id>/qr",
+  "anchorStatus": "PENDING",
+  "issuedAt": "2024-06-01T08:00:00.000Z"
+}
+```
+
+`anchorStatus` is `PENDING` on creation and transitions to `ANCHORED` after the worker submits the blockchain transaction.
+
+### POST /api/credentials/bulk
+
+Issue credentials from a CSV file. Returns a `batchId` — poll `GET /api/batches/:id` for progress.
+
+### POST /api/credentials/bulk-revoke
+
+**Body:** `{ ids: string[], reason: RevocationReason }`
+
+### POST /api/credentials/bulk-delete
+
+**Body:** `{ ids: string[] }`
+
+### GET /api/credentials
+
+List credentials for the institution.
+
+### GET /api/credentials/:id
+
+Get a single credential by ID.
+
+### DELETE /api/credentials/:id
+
+Delete a credential.
+
+### PATCH /api/credentials/:id/revoke
+
+**Body:** `{ reason: RevocationReason }`
+
+Valid reasons: `DATA_CORRECTION`, `ISSUED_IN_ERROR`, `FRAUD_SUSPECTED`, `INSTITUTION_REQUEST`, `OTHER`, `LEGACY`.
+
+### POST /api/credentials/:id/rebuild-assets
+
+Regenerates the QR code image and metadata file for the credential. Use after changing `API_PUBLIC_BASE_URL` or `WEB_PUBLIC_BASE_URL`.
+
+### POST /api/credentials/:id/secure-pdf
+
+Attach a secure PDF document proof to an existing credential.
+
+### GET /api/credentials/:id/metadata
+
+Returns the credential metadata JSON.
+
+### GET /api/credentials/:id/qr
+
+Returns the QR code image.
 
 ---
 
 ## Batches
 
-| Method | Path | Description |
-|---|---|---|
-| `GET` | `/api/batches/:id` | Get bulk issuance batch details |
+### GET /api/batches/:id
+
+Get bulk issuance batch details, including per-row results and failure reasons.
+
+```json
+{
+  "batchId": "batch_8f3c...",
+  "status": "COMPLETED",
+  "totalRows": 250,
+  "processedRows": 248,
+  "failedRows": 2
+}
+```
 
 ---
 
-## Verification (public)
+## Verification
 
-These endpoints do not require authentication. Rate limits apply.
+Public endpoints. No authentication required. Rate limits apply.
 
-| Method | Path | Rate limit | Description |
-|---|---|---|---|
-| `POST` | `/api/verify/credential/code` | 30 req / 60 s | Verify by verification code |
-| `POST` | `/api/verify/credential/pdf` | 10 req / 60 s | Verify credential by PDF upload |
-| `POST` | `/api/verify/secure-pdf` | 10 req / 60 s | Verify a secure PDF |
-| `GET` | `/api/verify/:verificationId` | — | Get verification result by ID |
-| `GET` | `/api/verify/:verificationId/certificate` | — | Download certificate PDF |
-| `POST` | `/api/verifications` | 30 req / 60 s | General verification endpoint |
-| `POST` | `/api/verification/upload` | 10 req / 60 s | Upload-based verification |
+### POST /api/verify/credential/code
+
+Rate limited: **30 requests per 60 seconds**.
+
+**Body:** `{ "verificationCode": "CERT-A1B2C3" }`
+
+```json
+{
+  "verificationId": "vrf_2f9a0cdbe7c1",
+  "verificationCode": "CERT-A1B2C3",
+  "verificationMode": "CORE_REGISTRY",
+  "valid": true,
+  "result": "VALID",
+  "revoked": false,
+  "revocationReason": null,
+  "degree": "Bachelor of Computer Science",
+  "issuedAt": "2024-06-01T08:00:00.000Z",
+  "issuer": {
+    "name": "Universitas Contoh",
+    "domain": "example.ac.id",
+    "status": "ACTIVE"
+  },
+  "blockchainVerified": true,
+  "blockchainStatus": "anchored",
+  "txHash": "0x3a7f2e...c4d1b8",
+  "blockNumber": 14203847,
+  "anchoredAt": "2024-06-01T08:04:12.000Z",
+  "trustChecks": [
+    { "key": "integrity", "label": "Credential Integrity Verified", "ok": true },
+    { "key": "issuer", "label": "Official Issuer Confirmed", "ok": true },
+    { "key": "chain", "label": "Blockchain Proof Verified", "ok": true },
+    { "key": "active", "label": "Credential Active", "ok": true }
+  ],
+  "verifiedAtTimestamp": "2024-06-01T09:15:00.000Z"
+}
+```
+
+### POST /api/verify/credential/pdf
+
+Rate limited: **10 requests per 60 seconds**. Multipart form upload.
+
+### POST /api/verify/secure-pdf
+
+Rate limited: **10 requests per 60 seconds**. Verifies a secure PDF document proof.
+
+### GET /api/verify/:verificationId
+
+Get a verification result by `verificationId`.
+
+### GET /api/verify/:verificationId/certificate
+
+Download the certificate PDF for a verified credential.
+
+### POST /api/verifications
+
+General verification endpoint.
+
+### POST /api/verification/upload
+
+Rate limited: **10 requests per 60 seconds**. Upload-based verification.
 
 ---
 
-## Document proofs
+## Document Proofs
 
-All document-proof write endpoints require authentication. Verification endpoints are public.
+Write endpoints require authentication. Verification endpoints are public.
 
-| Method | Path | Description |
-|---|---|---|
-| `POST` | `/api/document-proofs` | Create a document integrity proof |
-| `GET` | `/api/document-proofs` | List document proofs |
-| `GET` | `/api/document-proofs/:id` | Get proof by ID |
-| `DELETE` | `/api/document-proofs/:id` | Delete proof |
-| `POST` | `/api/document-proofs/bulk-delete` | Delete multiple proofs |
-| `POST` | `/api/document-proofs/verify/document/code` | Verify document proof by code (public) |
-| `POST` | `/api/document-proofs/verify/document` | Verify document by file upload (public) |
-| `GET` | `/api/document-proofs/:id/metadata` | Get proof metadata |
-| `GET` | `/api/document-proofs/:id/qr` | Get proof QR code image |
-| `GET` | `/api/document-proofs/proof/:verificationId` | Get proof result by verification ID (public) |
+### POST /api/document-proofs
+
+Register a document integrity proof. Multipart form upload. The source file is discarded — only the SHA-256 hash is stored.
+
+**Response:**
+```json
+{
+  "id": "dp_7a3f...",
+  "verificationCode": "DOC-X9Y8Z7",
+  "qrCodeUri": "https://api.certiva.io/api/document-proofs/dp_7a3f.../qr"
+}
+```
+
+### GET /api/document-proofs
+
+List document proofs for the institution.
+
+### GET /api/document-proofs/:id
+
+Get a single proof by ID.
+
+### DELETE /api/document-proofs/:id
+
+Delete a proof.
+
+### POST /api/document-proofs/bulk-delete
+
+**Body:** `{ ids: string[] }`
+
+### POST /api/document-proofs/verify/document/code
+
+Public. Verify document proof by verification code.
+
+### POST /api/document-proofs/verify/document
+
+Public. Verify document proof by file upload (multipart).
+
+```json
+{ "result": "VALID", "verificationMode": "SECURE_PDF" }
+```
+
+### GET /api/document-proofs/:id/metadata
+
+Returns proof metadata JSON.
+
+### GET /api/document-proofs/:id/qr
+
+Returns the proof QR code image.
+
+### GET /api/document-proofs/proof/:verificationId
+
+Public. Get proof result by `verificationId`.
 
 ---
 
@@ -140,7 +298,7 @@ All audit endpoints require authentication.
 | Method | Path | Description |
 |---|---|---|
 | `GET` | `/api/audit/logs` | Full audit log |
-| `GET` | `/api/audit/blockchain` | Blockchain-specific audit log |
+| `GET` | `/api/audit/blockchain` | Blockchain anchor audit log |
 | `GET` | `/api/audit/action-logs` | Action audit log |
 | `GET` | `/api/audit/dashboard/metrics` | Dashboard metrics |
 | `GET` | `/api/audit/dashboard/activity` | Recent activity |
@@ -163,17 +321,13 @@ All audit endpoints require authentication.
 
 ## Blockchain
 
-| Method | Path | Auth required | Description |
-|---|---|---|---|
-| `GET` | `/api/blockchain/health` | Yes | Check blockchain node connectivity |
+### GET /api/blockchain/health
 
----
+Requires authentication. Checks connectivity to the configured Polygon Amoy RPC endpoint.
 
-## Health
-
-| Method | Path | Auth required | Description |
-|---|---|---|---|
-| `GET` | `/api/health` | No | API liveness check |
+```json
+{ "connected": true, "blockNumber": 14203847 }
+```
 
 ---
 
@@ -183,14 +337,5 @@ All audit endpoints require authentication.
 |---|---|
 | `VALID` | Credential is active and unrevoked |
 | `REVOKED` | Credential has been revoked |
-| `NOT_FOUND` | No matching credential found in the registry |
+| `NOT_FOUND` | No matching record in the registry |
 | `INVALID` | Document hash does not match the stored proof |
-
-## Admin roles
-
-| Role | Value |
-|---|---|
-| Owner | `OWNER` |
-| Super Admin | `SUPER_ADMIN` |
-| Admin | `ADMIN` |
-| Auditor | `AUDITOR` |
