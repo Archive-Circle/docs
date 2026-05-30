@@ -1,0 +1,122 @@
+---
+title: "Core concepts"
+description: "How escrow contracts, SIWE wallet binding, fee-on-top math, and refunds work."
+icon: "puzzle-piece"
+---
+
+## Escrow model
+
+Each split creates a dedicated `SplitEscrow` smart contract that holds funds until all participants have deposited. The contract is immutable once deployed: no one can change the participants, amounts, target, or fee after deployment.
+
+Key properties:
+
+- **2 to 50 participants**: enforced in the constructor. A split needs at least 2 people and caps at 50 to prevent gas-based denial of service.
+- **Immutable parameters**: amount per participant, target address, deadline, fee, and fee wallet are set at deploy time and cannot be modified.
+- **Separate storage**: contributions and pending withdrawals are tracked separately from `address(this).balance`, so force-sent ETH (via selfdestruct) cannot inflate fees or break invariants.
+
+## SIWE wallet binding
+
+SplitBot uses Sign-In With Ethereum (SIWE) to bind Telegram accounts to Ethereum wallets. This prevents identity squatting, where one user registers another person's address.
+
+<Steps>
+  <Step title="Registration request">
+    User runs `/register 0xWallet`. The bot generates a cryptographic nonce and stores it in the database with a 10-minute TTL.
+  </Step>
+
+  <Step title="Signature prompt">
+    The bot returns a deep-link to the Mini App verification page, which displays a human-readable SIWE message containing the nonce, address, and Telegram user ID.
+  </Step>
+
+  <Step title="Wallet signature">
+    The user signs the message in their wallet. No on-chain transaction is sent. The signature is returned to the bot via Telegram WebApp `sendData` (mobile) or the `/verify` command (desktop fallback).
+  </Step>
+
+  <Step title="Verification">
+    The bot recovers the signer address from the signature using `eth_account.recover_message`. If the recovered address matches the expected address, the binding is persisted.
+  </Step>
+</Steps>
+
+## Fee-on-top
+
+The contract charges a fee in basis points (BPS). The fee is deducted from the total pool before sending to the target, so participants pay slightly more than their share to ensure the target receives the exact amount.
+
+The math:
+
+```
+pool = ceil(target_total * 10000 / (10000 - fee_bps))
+per_participant = ceil(pool / num_participants)
+```
+
+For example, with a 0.5% fee (50 BPS) and a 0.005 ETH total split across 2 participants:
+
+```
+pool = ceil(0.005 * 10000 / 9950) = 0.005026 ETH
+per_participant = ceil(0.005026 / 2) = 0.002513 ETH
+```
+
+Each participant deposits 0.002513 ETH. The contract computes `feeAmount = pool * 50 / 10000` and sends `pool - feeAmount` to the target.
+
+## Deposit flow
+
+Participants can deposit in two ways:
+
+- **`deposit()` function call**: a standard EVM call through the Mini App's wallet connect flow. This is the preferred path.
+- **Direct ETH transfer**: sending ETH to the contract address with sufficient value. The `receive()` fallback accepts it.
+
+Both paths call the same internal `_accept()` function, which:
+
+1. Verifies the sender is a registered participant.
+2. Checks the deposit meets the minimum amount (amountPerParticipant).
+3. Rejects double deposits from the same address.
+4. Records the contribution and increments the paid count.
+5. Auto-executes the payout when `paidCount == participantCount`.
+
+<Info>
+Overpay is accepted. If a participant sends more than the required amount, the excess stays in the contract as dust. Anyone can call `sweepDust()` after execution to send the dust to the target.
+</Info>
+
+## Auto-execution
+
+When the last participant deposits, the contract automatically executes:
+
+1. Sets `executed = true` to prevent further deposits.
+2. Computes `feeAmount = totalContributed * feeBps / 10000`.
+3. Sends `feeAmount` to the fee wallet (with a 50,000 gas stipend).
+4. Sends `totalContributed - feeAmount` to the target (with a 50,000 gas stipend).
+5. If either transfer fails, the amount goes into `pendingWithdrawals` for the recipient to claim via `claimRefund()`.
+
+The gas stipend prevents the target or fee wallet from consuming unlimited gas in a fallback function, which could block other participants.
+
+## Refunds
+
+If not all participants pay before the deadline, refunds are available through a pull-pattern:
+
+1. **`refund()`**: after the deadline, anyone can call this to queue all deposits into `pendingWithdrawals`. Each participant's contribution is moved to their individual pending balance.
+2. **`claimRefund()`**: each participant withdraws their queued balance individually.
+3. **`pushPending()`**: anyone can claim on behalf of a stuck recipient (for example, a contract without a `claimRefund` wrapper).
+
+The pull-pattern ensures that one participant with a reverting receive function cannot block others from getting their refunds.
+
+The creator can also cancel before the deadline by calling `cancel()`, which queues refunds for all participants.
+
+## Factory and CREATE2
+
+The `SplitEscrowFactory` deploys escrow contracts using CREATE2, which produces deterministic addresses based on:
+
+- The factory's address.
+- A salt (derived from the split ID).
+- The escrow bytecode and constructor arguments.
+
+This means participants can compute the escrow address before any funds are deposited, using the `predictAddress()` function.
+
+The factory itself has no admin functions and no upgrade capability. A compromised deployer key can spam-deploy new escrows but cannot alter the factory's behavior or affect existing splits.
+
+## Bot architecture
+
+The Telegram bot runs as a long-lived Python process with three components:
+
+- **Command handlers**: `/register`, `/split`, `/status`, `/cancel`, `/history`, `/verify`, `/help`. These handle user input and trigger contract interactions.
+- **Background watcher**: a repeating job that polls active splits every 30 seconds. It reads on-chain status and notifies the group when a split executes or gets refunded.
+- **WebApp data handler**: receives signed SIWE proofs and payment confirmations from the Mini App via Telegram WebApp `sendData`.
+
+State is stored in a SQLite database with WAL journaling. The database persists split metadata, event logs, wallet registry, and pending SIWE nonces.

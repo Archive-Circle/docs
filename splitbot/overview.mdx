@@ -1,0 +1,79 @@
+---
+title: "SplitBot overview"
+description: "Trustless group payment splitting on Ethereum through a Telegram bot and on-chain escrow contracts."
+icon: "split"
+---
+
+SplitBot is a Telegram bot that lets groups split ETH payments without trusting a middleman. When a user creates a split, the bot deploys a per-split escrow smart contract. Each participant deposits their share through a Mini App or a direct ETH transfer. When the last deposit lands, the contract automatically sends the funds to the target address, minus a small fee. If the deadline passes before everyone pays, participants can claim refunds through a pull-pattern withdrawal.
+
+<Info>
+SplitBot is non-custodial. The bot deploys contracts and monitors on-chain events, but never holds funds. All deposits, payouts, and refunds happen through the escrow contract.
+</Info>
+
+## What SplitBot does
+
+<CardGroup cols={2}>
+  <Card title="Get started" icon="rocket" href="/splitbot/quickstart">
+    Set up the bot, deploy contracts, and run your first split on Sepolia.
+  </Card>
+  <Card title="Understand the concepts" icon="diagram-project" href="/splitbot/concepts">
+    Learn how escrow contracts, SIWE wallet binding, fee-on-top math, and refunds work.
+  </Card>
+  <Card title="Configure the bot" icon="sliders" href="/splitbot/configuration">
+    Set environment variables for the bot, contracts, and Mini App.
+  </Card>
+  <Card title="Common workflows" icon="list-check" href="/splitbot/workflows">
+    Walk through creating a split, paying, cancelling, and claiming refunds.
+  </Card>
+</CardGroup>
+
+## How it works
+
+```
+Telegram Chat                    Mini App (Vercel)
+     |                                |
+     v                                v
+Python Bot (polling)           Browser + MetaMask
+     |                                |
+     v                                v
+SplitEscrowFactory ----CREATE2----> SplitEscrow
+     (Sepolia)                    (per-split)
+                                      |
+                                      v
+                               Target receives ETH
+                               Fee goes to feeWallet
+```
+
+The bot creates a split by calling the `SplitEscrowFactory` contract, which uses CREATE2 to deploy a deterministic `SplitEscrow` instance. Participants deposit through the Mini App (wallet connect) or by sending ETH directly to the contract. When the last participant pays, the contract executes automatically and the target receives the exact requested amount.
+
+## Highlights
+
+- **Non-custodial escrow**: funds are held by a per-split smart contract, not the bot.
+- **SIWE wallet binding**: users prove wallet ownership by signing a nonce, preventing identity squatting.
+- **Auto-execution**: the contract triggers payout when all participants have deposited.
+- **Overpay tolerance**: deposits at or above the required amount are accepted.
+- **Pull-pattern refunds**: no single participant can block others from claiming refunds.
+- **Fee-on-top**: a configurable fee (default 0.5%) is added to each deposit so the target receives the exact requested amount.
+- **CREATE2 factory**: deterministic contract addresses let participants verify the escrow before depositing.
+- **Participant DMs**: each participant receives a confirmation DM with the target address before paying.
+- **Background watcher**: the bot polls active splits every 30 seconds and notifies the group when a split executes or gets refunded.
+- **Mini App**: a Telegram WebApp for wallet connect, on-chain deposit, and manual transaction verification.
+
+## Stack
+
+- **Smart contracts**: Solidity 0.8.20, Hardhat, OpenZeppelin ReentrancyGuard
+- **Bot**: Python 3.11+, python-telegram-bot 21.x, web3.py, SQLite
+- **Mini App**: ethers.js 6.x, Telegram WebApp SDK, Vercel
+- **Network**: Ethereum Sepolia (testnet)
+
+## Current deployment
+
+The bot and contracts are deployed on Sepolia testnet:
+
+- **Bot**: [@splitbott_bot](https://t.me/splitbott_bot)
+- **Factory**: `0xa247646Dd0d8a2042aD5Cd440A26358457494aa7`
+- **Mini App**: hosted on Vercel
+
+<Warning>
+SplitBot is currently on Sepolia testnet. The code supports any EVM chain, but mainnet deployment with real funds should only happen after an external security audit review.
+</Warning>

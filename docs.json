@@ -76,6 +76,27 @@
             ]
           }
         ]
+      },
+      {
+        "tab": "SplitBot",
+        "groups": [
+          {
+            "group": "Start here",
+            "pages": [
+              "splitbot/overview",
+              "splitbot/quickstart"
+            ]
+          },
+          {
+            "group": "Product guide",
+            "pages": [
+              "splitbot/concepts",
+              "splitbot/configuration",
+              "splitbot/workflows",
+              "splitbot/api-reference"
+            ]
+          }
+        ]
       }
     ],
     "global": {
