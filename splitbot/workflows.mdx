@@ -1,0 +1,116 @@
+---
+title: "Workflows"
+description: "Step-by-step guides for common SplitBot operations."
+icon: "list-check"
+---
+
+## Register a wallet
+
+Wallet registration requires signing a SIWE message to prove you control the address. Without this proof, you cannot join splits.
+
+<Steps>
+  <Step title="Initiate registration">
+    In Telegram, send `/register 0xYourWalletAddress` to the bot or in a group chat.
+  </Step>
+
+  <Step title="Sign the message">
+    Open the verification link. In the Mini App, connect your wallet and sign the message. On desktop, you can open the link in a browser and paste the signature back with `/verify <signature>`.
+  </Step>
+
+  <Step title="Confirmation">
+    The bot confirms the binding with your Telegram username and wallet address. You are now ready to join splits.
+  </Step>
+</Steps>
+
+<Note>
+A nonce expires 10 minutes after issuance. If the verification window closes, run `/register` again to get a fresh link.
+</Note>
+
+## Create a split
+
+Any registered user can create a split in a group chat or private chat with the bot.
+
+<Steps>
+  <Step title="Draft the split">
+    Send `/split @user1 @user2 <amount> <target_address>` where:
+    - Mentions are the other participants (the creator is included automatically).
+    - Amount is the ETH total the target should receive (not per-person).
+    - Target is the wallet that receives the funds after everyone pays.
+  </Step>
+
+  <Step title="Contract deployment">
+    The bot validates all participant wallets, computes the fee-on-top deposit per person, and deploys an escrow contract. This takes a few seconds. The bot posts the split details with a Pay button and explorer link.
+  </Step>
+
+  <Step title="Participant notifications">
+    Each registered participant receives a DM with the split details, target address, and a confirmation prompt. The DM warns them to verify the target address through a separate channel before depositing.
+  </Step>
+</Steps>
+
+Rate limit: each user can create at most 5 splits per hour. The bot rejects excess requests with a "slow down" message.
+
+## Pay into a split
+
+Each participant deposits their share into the escrow contract.
+
+### Via Mini App (recommended)
+
+1. Tap the **Open Pay Page** button in the split message.
+2. Connect your wallet (MetaMask, Rabby, OKX Wallet, or any EIP-1193 compatible wallet).
+3. The page shows the exact deposit amount and the contract address.
+4. Tap **Connect wallet & Pay** and confirm the transaction in your wallet.
+
+### Manual payment
+
+1. Copy the contract address and the deposit amount from the split message.
+2. Send at least the exact amount to the contract address from your wallet.
+3. Tap **I already sent manually** on the Mini App to verify your transaction by hash.
+
+<Warning>
+Send funds to the escrow contract address, not the target address. The target only receives funds after all participants have deposited into the contract.
+</Warning>
+
+## Check split status
+
+Send `/status <split_id>` to the bot. The response shows:
+
+- Split ID and status (pending, active, completed, refunded, cancelled).
+- Number of participants and how many have paid (on-chain progress).
+- Amount per person and total contributed.
+- Fee percentage and deployment transaction link.
+
+You can also tap the **Status** inline button on any split message.
+
+## Cancel a split
+
+Only the creator can cancel a split. Send `/cancel <split_id>`.
+
+<Steps>
+  <Step title="Creator cancels">
+    The bot calls the `cancel()` function on the escrow contract. This queues refunds for all participants who have already deposited.
+  </Step>
+
+  <Step title="Participants claim refunds">
+    Each participant must call `claimRefund()` on the contract to withdraw their deposit. The bot notifies the group that the split was cancelled.
+  </Step>
+</Steps>
+
+<Note>
+Cancellation is only possible before the split has executed (before all participants paid). If the split has already executed, the funds have been sent to the target and cannot be recalled.
+</Note>
+
+## Claim refunds after deadline
+
+If the deadline passes and not everyone has paid:
+
+1. Anyone can call `refund()` on the contract to queue all deposits into individual pending withdrawal balances.
+2. Each participant then calls `claimRefund()` to withdraw their queued balance.
+3. If a participant is a contract that cannot call `claimRefund()`, anyone can call `pushPending(participant_address)` on their behalf.
+
+## Sweep dust
+
+After a split executes, any overpay (amounts above the exact required deposit) stays in the contract as dust. Anyone can call `sweepDust()` to send the dust to the target address.
+
+## View history
+
+Send `/history` to see your 15 most recent splits, including the split ID, total amount, participant count, and current status.

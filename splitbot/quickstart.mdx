@@ -1,0 +1,127 @@
+---
+title: "Quickstart"
+description: "Set up the bot, compile contracts, and run your first split on Sepolia."
+icon: "rocket"
+---
+
+## Prerequisites
+
+- Node.js 18+
+- Python 3.11+
+- A Telegram bot token from [@BotFather](https://t.me/BotFather)
+- A deployer wallet private key (test wallet only)
+- Sepolia test ETH from a [faucet](https://sepolia-faucet.pk910.de/)
+
+## Install
+
+<Steps>
+  <Step title="Clone the repository">
+    ```bash
+    git clone https://github.com/Archive-Circle/splitbot2.git
+    cd splitbot2
+    ```
+  </Step>
+
+  <Step title="Compile smart contracts">
+    ```bash
+    npm install
+    npm run compile
+    ```
+  </Step>
+
+  <Step title="Set up the Python bot">
+    ```bash
+    cd bot
+    python3 -m venv .venv
+    source .venv/bin/activate
+    pip install -r ../requirements.txt
+    ```
+  </Step>
+
+  <Step title="Configure environment">
+    ```bash
+    cp .env.example .env
+    ```
+
+    Edit `.env` with your values. See [Configuration](/splitbot/configuration) for the full variable reference.
+
+    At minimum, set:
+
+    ```bash
+    TELEGRAM_BOT_TOKEN=your_bot_token
+    RPC_URL=https://ethereum-sepolia-rpc.publicnode.com
+    DEPLOYER_PRIVATE_KEY=0xyour_test_private_key
+    FEE_WALLET=0xyour_fee_wallet_address
+    ```
+  </Step>
+
+  <Step title="Run the bot">
+    ```bash
+    cd bot
+    source .venv/bin/activate
+    python main.py
+    ```
+
+    You should see:
+
+    ```
+    Bot started. chain_id=11155111 rpc=https://ethereum-sepolia-rpc.publicn…
+    ```
+  </Step>
+</Steps>
+
+## Run tests
+
+```bash
+# Smart contract tests (25 tests)
+npx hardhat test
+
+# Bot unit tests (20 tests)
+python test_bot.py
+
+# Telegram init-data verification tests (7 tests)
+python test_init_data.py
+```
+
+## Your first split
+
+<Steps>
+  <Step title="Register your wallet">
+    In Telegram, send:
+
+    ```
+    /register 0xYourWalletAddress
+    ```
+
+    The bot returns a link to the Mini App. Open it, connect your wallet, and sign the SIWE message.
+  </Step>
+
+  <Step title="Create a split">
+    In a group chat with at least one other registered user:
+
+    ```
+    /split @alice 0.001 0xTargetAddress
+    ```
+
+    The bot deploys an escrow contract and posts a Pay button.
+  </Step>
+
+  <Step title="Pay your share">
+    Each participant opens the Mini App, connects their wallet, and deposits. When the last person pays, the contract auto-executes and the target receives the funds.
+  </Step>
+</Steps>
+
+## Deploy the Mini App
+
+The Mini App is a static site in the `miniapp/` directory.
+
+```bash
+cd miniapp
+vercel --prod
+```
+
+After deploying, update `MINI_APP_URL` in `.env` to the deployed URL.
+
+<Note>
+The Mini App has build-time pinned constants for chain ID, RPC URL, and explorer base. To switch networks, deploy a separate Vercel project from a production branch. Do not parameterise these values through URL query strings.
+</Note>

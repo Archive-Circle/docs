@@ -1,0 +1,109 @@
+---
+title: "Configuration"
+description: "Environment variables, contract parameters, and deployment options."
+icon: "gear"
+---
+
+SplitBot is configured entirely through environment variables in a `.env` file at the repository root. The `.env.example` file provides a template with safe placeholder values.
+
+## Environment variables
+
+### Required
+
+| Variable | Example | Description |
+| --- | --- | --- |
+| `TELEGRAM_BOT_TOKEN` | `123456:ABC-DEF...` | Bot token from [@BotFather](https://t.me/BotFather) |
+| `RPC_URL` | `https://ethereum-sepolia-rpc.publicnode.com` | Ethereum JSON-RPC endpoint |
+| `DEPLOYER_PRIVATE_KEY` | `0x...` | Private key for the deployer wallet. Use a test wallet only |
+| `FEE_WALLET` | `0x...` | Address that receives fees from executed splits |
+
+### Optional
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `CHAIN_ID` | `11155111` | Network chain ID (Sepolia) |
+| `EXPLORER_BASE` | `https://sepolia.etherscan.io` | Block explorer base URL for transaction links |
+| `FEE_PERCENT_BPS` | `50` | Fee in basis points. 50 = 0.5%, max 1000 = 10% |
+| `DEADLINE_SECS` | `86400` | Default split timeout in seconds (24 hours) |
+| `MINI_APP_URL` | `https://your-miniapp.vercel.app` | Deployed Mini App URL for payment and verification pages |
+| `SIWE_DOMAIN` | `splitbot.local` | Domain string included in SIWE messages for replay protection |
+| `MAX_PARTICIPANTS` | `50` | Maximum participants per split. Hard-capped at 50 in the contract |
+| `DB_PATH` | `splitbot.db` | SQLite database file path |
+| `FACTORY_ADDRESS` | _(empty)_ | CREATE2 factory contract address. When set, deployments go through the factory instead of direct constructor calls |
+
+<Warning>
+Never commit `.env` to version control. The `.gitignore` already excludes it. Never use your main wallet private key for `DEPLOYER_PRIVATE_KEY`.
+</Warning>
+
+## Fee configuration
+
+Fees are specified in basis points through `FEE_PERCENT_BPS`:
+
+| BPS value | Percentage |
+| --- | --- |
+| `0` | 0% (no fee) |
+| `50` | 0.5% |
+| `100` | 1% |
+| `500` | 5% |
+| `1000` | 10% (contract maximum) |
+
+The bot supports a legacy `FEE_PERCENT` variable (as a float percentage like `0.5`) and auto-converts it to basis points if `FEE_PERCENT_BPS` is not set.
+
+The fee is computed as fee-on-top: each participant's deposit is slightly more than their share so the target receives the exact requested amount.
+
+## Factory deployment
+
+When `FACTORY_ADDRESS` is set, the bot deploys escrow contracts through the `SplitEscrowFactory` using CREATE2. This provides:
+
+- Deterministic contract addresses that participants can verify before depositing.
+- A fixed deployment pathway: all escrows share the same verified bytecode.
+- Key rotation safety: swapping the deployer key does not affect past escrows.
+
+When `FACTORY_ADDRESS` is empty, the bot falls back to direct constructor deployment.
+
+## Mini App configuration
+
+The Mini App (`miniapp/` directory) is a static site with build-time pinned constants in `index.html`:
+
+| Constant | Value | Purpose |
+| --- | --- | --- |
+| `chainId` | `11155111` | Network gate |
+| `chainHex` | `0xaa36a7` | `wallet_switchEthereumChain` parameter |
+| `rpcUrl` | `https://ethereum-sepolia-rpc.publicnode.com` | Read-only chain queries |
+| `explorerBase` | `https://sepolia.etherscan.io` | Explorer links |
+
+<Note>
+These constants are intentionally not URL-controllable. This prevents phishing attacks where a deeplink redirects users to a malicious chain or RPC endpoint.
+</Note>
+
+## Hardhat configuration
+
+The `hardhat.config.js` file defines the Sepolia network and compiler settings:
+
+```javascript
+module.exports = {
+  solidity: {
+    version: "0.8.20",
+    settings: {
+      optimizer: { enabled: true, runs: 200 },
+    },
+  },
+  networks: {
+    sepolia: {
+      url: process.env.SEPOLIA_RPC_URL || "https://ethereum-sepolia-rpc.publicnode.com",
+      accounts: process.env.DEPLOYER_PRIVATE_KEY ? [process.env.DEPLOYER_PRIVATE_KEY] : [],
+      chainId: 11155111,
+    },
+  },
+};
+```
+
+Available scripts from `package.json`:
+
+| Command | Description |
+| --- | --- |
+| `npm run compile` | Compile Solidity contracts |
+| `npm test` | Run Hardhat test suite |
+| `npm run test:gas` | Run tests with gas reporting |
+| `npm run deploy:sepolia` | Deploy to Sepolia |
+| `npm run deploy:local` | Deploy to local Hardhat network |

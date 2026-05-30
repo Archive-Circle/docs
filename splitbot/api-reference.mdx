@@ -1,0 +1,215 @@
+---
+title: "API reference"
+description: "Smart contract interfaces and bot commands."
+icon: "code"
+---
+
+SplitBot exposes its functionality through smart contracts and Telegram bot commands. The contracts are deployed on Ethereum Sepolia. The bot uses polling (not webhooks) and stores state in SQLite.
+
+## Smart contracts
+
+### SplitEscrowFactory
+
+Deployed at `0xa247646Dd0d8a2042aD5Cd440A26358457494aa7` on Sepolia.
+
+#### `createSplit`
+
+Deploys a new `SplitEscrow` at a deterministic CREATE2 address.
+
+```solidity
+function createSplit(
+    bytes32 salt,
+    address[] calldata participants,
+    uint256 amountEach,
+    address payable target,
+    uint256 deadlineSecs,
+    uint256 feeBps,
+    address payable feeWallet
+) external returns (address escrow)
+```
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `salt` | `bytes32` | Caller-chosen salt. The bot derives this from the split ID |
+| `participants` | `address[]` | Sorted, deduped list of participant addresses |
+| `amountEach` | `uint256` | Wei each participant must deposit |
+| `target` | `address payable` | Recipient of the split funds |
+| `deadlineSecs` | `uint256` | Seconds until refund window opens |
+| `feeBps` | `uint256` | Fee in basis points (0 to 1000) |
+| `feeWallet` | `address payable` | Recipient of the fee |
+
+Emits `SplitDeployed(escrow, creator, salt, target, amountEach, deadline)`.
+
+#### `predictAddress`
+
+Compute the address a `createSplit` call would produce before deploying.
+
+```solidity
+function predictAddress(
+    bytes32 salt,
+    address[] calldata participants,
+    uint256 amountEach,
+    address payable target,
+    uint256 deadlineSecs,
+    uint256 feeBps,
+    address payable feeWallet
+) external view returns (address)
+```
+
+#### `INIT_CODE_HASH`
+
+Returns the hash of the `SplitEscrow` creation bytecode. Used for off-chain address prediction.
+
+```solidity
+function INIT_CODE_HASH() external pure returns (bytes32)
+```
+
+### SplitEscrow
+
+One instance per split. Deployed by the factory with immutable parameters.
+
+#### Constants
+
+| Name | Value | Description |
+| --- | --- | --- |
+| `MAX_FEE_BPS` | `1000` | Maximum fee (10%) |
+| `BPS_DENOMINATOR` | `10000` | Basis point denominator |
+| `TRANSFER_GAS_STIPEND` | `50000` | Gas cap for external calls |
+| `MAX_PARTICIPANTS` | `50` | Maximum participant count |
+
+#### State variables
+
+| Name | Type | Access | Description |
+| --- | --- | --- | --- |
+| `creator` | `address` | immutable | Deployer/creator address |
+| `target` | `address payable` | immutable | Final recipient |
+| `amountPerParticipant` | `uint256` | immutable | Required deposit per participant |
+| `deadline` | `uint256` | immutable | Unix timestamp for refund window |
+| `feeBps` | `uint256` | immutable | Fee in basis points |
+| `feeWallet` | `address payable` | immutable | Fee recipient |
+| `paidCount` | `uint256` | view | Number of participants who have paid |
+| `totalContributed` | `uint256` | view | Total wei recorded as contributions |
+| `executed` | `bool` | view | Whether the split has executed |
+| `refunded` | `bool` | view | Whether refunds have been queued |
+
+#### `deposit`
+
+Deposit the required amount as a registered participant.
+
+```solidity
+function deposit() external payable
+```
+
+- Reverts if the caller is not a participant, already paid, deadline passed, or amount is insufficient.
+- Auto-executes when all participants have deposited.
+
+#### `receive`
+
+Accepts direct ETH transfers from participants. Calls the same internal logic as `deposit()`.
+
+#### `refund`
+
+After the deadline, queue all deposits for individual withdrawal. Anyone can call.
+
+```solidity
+function refund() external
+```
+
+Emits `RefundQueued` for each participant with a pending deposit.
+
+#### `cancel`
+
+Creator-only. Queue refunds before the deadline.
+
+```solidity
+function cancel() external
+```
+
+Emits `Cancelled(msg.sender)` and `RefundQueued` for each deposited participant.
+
+#### `claimRefund`
+
+Withdraw a queued refund or failed payout.
+
+```solidity
+function claimRefund() external
+```
+
+Emits `RefundClaimed(msg.sender, amount)`.
+
+#### `pushPending`
+
+Claim a queued balance on behalf of another address. Useful when the recipient is a contract without a `claimRefund` wrapper.
+
+```solidity
+function pushPending(address payable recipient) external
+```
+
+#### `sweepDust`
+
+Send leftover dust (from overpay) to the target after execution.
+
+```solidity
+function sweepDust() external
+```
+
+Emits `DustSwept(target, dust)`.
+
+#### `getStatus`
+
+Return the full split status in a single call.
+
+```solidity
+function getStatus() external view returns (
+    uint256 paidCount,
+    uint256 totalParticipants,
+    bool executed,
+    bool refunded,
+    uint256 deadline,
+    uint256 amountEach,
+    uint256 totalContributed,
+    uint256 feeBps
+)
+```
+
+#### Events
+
+| Event | Fields |
+| --- | --- |
+| `Deposited` | `participant (indexed)`, `amount`, `method` |
+| `Executed` | `target (indexed)`, `totalAmount`, `feeAmount` |
+| `ExecutePayoutFailed` | `recipient (indexed)`, `amount`, `kind` |
+| `RefundQueued` | `participant (indexed)`, `amount` |
+| `RefundClaimed` | `participant (indexed)`, `amount` |
+| `Cancelled` | `by (indexed)` |
+| `DustSwept` | `to (indexed)`, `amount` |
+
+## Bot commands
+
+| Command | Description | Input |
+| --- | --- | --- |
+| `/start` | Show welcome message and quick start guide | None |
+| `/register` | Bind a wallet to your Telegram account via SIWE | `0xWalletAddress` |
+| `/split` | Create a new payment split | `@user1 @user2 <amount> <target>` |
+| `/status` | Check on-chain split status | `<split_id>` |
+| `/cancel` | Cancel a split and queue refunds (creator only) | `<split_id>` |
+| `/history` | View your 15 most recent splits | None |
+| `/verify` | Desktop fallback for SIWE signature verification | `<signature>` |
+| `/help` | List all commands | None |
+
+## Mini App endpoints
+
+The Mini App is a static site. It interacts with the blockchain directly through ethers.js and communicates with the bot via Telegram WebApp `sendData`.
+
+The bot's `webapp_data_handler` receives two action types:
+
+| Action | Payload | Description |
+| --- | --- | --- |
+| `siwe_proof` | `{action, address, nonce, signature}` | SIWE wallet verification proof |
+| `paid` | `{action, split_id, tx_hash}` | Payment confirmation from Mini App |
+
+No HTTP API endpoints are exposed by the bot itself. All on-chain reads and writes happen through the web3 provider in the bot or ethers.js in the Mini App.
+
+<Note>
+The Mini App reads split status directly from the smart contract using `getStatus()` through a public Sepolia RPC endpoint. It does not call the bot's database for live status.
+</Note>
