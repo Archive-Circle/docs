@@ -97,6 +97,32 @@
             ]
           }
         ]
+      },
+      {
+        "tab": "Certiva",
+        "groups": [
+          {
+            "group": "Start here",
+            "pages": [
+              "certiva/overview",
+              "certiva/quickstart"
+            ]
+          },
+          {
+            "group": "Product guide",
+            "pages": [
+              "certiva/concepts",
+              "certiva/configuration",
+              "certiva/workflows"
+            ]
+          },
+          {
+            "group": "API reference",
+            "pages": [
+              "certiva/api-reference"
+            ]
+          }
+        ]
       }
     ],
     "global": {

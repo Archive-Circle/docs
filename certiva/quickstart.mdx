@@ -1,0 +1,95 @@
+---
+title: "Quickstart"
+description: "Get Certiva running locally in under ten minutes."
+icon: "rocket"
+---
+
+## Prerequisites
+
+- Node.js 20 or later
+- pnpm 9 or later
+- Docker and Docker Compose
+- A GitHub account with access to the Certiva repository
+
+## 1. Clone and install
+
+```bash
+git clone <certiva-repository-url>
+cd certiva
+pnpm install
+```
+
+## 2. Start infrastructure
+
+```bash
+docker compose up -d
+```
+
+This starts PostgreSQL 16 on port 5432 and Redis 7 on port 6379.
+
+## 3. Configure environment variables
+
+Copy the example files and fill in values:
+
+```bash
+cp .env.example .env
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env
+cp apps/worker/.env.example apps/worker/.env
+```
+
+<Note>
+For local development, you can leave most values at their defaults. The minimum required values are `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET` (at least 64 characters), and `CORS_ORIGINS`.
+</Note>
+
+## 4. Run database migrations and start the API
+
+```bash
+cd apps/api
+pnpm dev
+```
+
+Migrations are applied automatically on startup via `prisma migrate deploy`.
+
+## 5. Start the web frontend
+
+In a separate terminal:
+
+```bash
+cd apps/web
+pnpm dev
+```
+
+The dashboard is available at [http://localhost:3000](http://localhost:3000).
+
+## 6. Start the background worker
+
+In a third terminal:
+
+```bash
+cd apps/worker
+pnpm dev
+```
+
+## 7. Seed the database
+
+```bash
+cd apps/api
+pnpm prisma:seed
+```
+
+This creates an initial Owner admin account. Check the seed script output for the default credentials.
+
+## Verify the setup
+
+```bash
+curl http://localhost:4000/api/health
+```
+
+Expected response: `{"status":"ok"}`
+
+## Next steps
+
+- Read [Configuration](/certiva/configuration) for all environment variable options.
+- Read [Concepts](/certiva/concepts) to understand the credential lifecycle.
+- Read [Workflows](/certiva/workflows) for common operator tasks.

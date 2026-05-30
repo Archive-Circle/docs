@@ -1,0 +1,218 @@
+---
+title: "Workflows"
+description: "Common operator workflows for credential issuance, verification, and administration."
+icon: "arrow-progress"
+---
+
+## Issue a single credential
+
+<Steps>
+  <Step title="Authenticate">
+    Log in as an admin with `OWNER`, `SUPER_ADMIN`, or `ADMIN` role.
+  </Step>
+  <Step title="Submit the credential">
+    ```bash
+    POST /api/credentials
+    Content-Type: application/json
+    Cookie: certiva_access_token=<token>
+
+    {
+      "recipientName": "Siti Rahayu",
+      "recipientEmail": "siti@example.com",
+      "credentialTitle": "Bachelor of Computer Science",
+      "issuedAt": "2024-06-01"
+    }
+    ```
+  </Step>
+  <Step title="Retrieve the result">
+    The response includes `verificationId`, `verificationCode`, `verificationUrl`, and a QR code URL.
+  </Step>
+</Steps>
+
+## Issue credentials in bulk (CSV)
+
+<Steps>
+  <Step title="Prepare a CSV file">
+    Structure your CSV according to the expected column headers. Verify with maintainer for exact schema.
+  </Step>
+  <Step title="Upload the CSV">
+    ```bash
+    POST /api/credentials/bulk
+    Content-Type: multipart/form-data
+    Cookie: certiva_access_token=<token>
+    ```
+  </Step>
+  <Step title="Poll batch status">
+    ```bash
+    GET /api/batches/:batchId
+    Cookie: certiva_access_token=<token>
+    ```
+    Monitor the `IssuanceBatch` record for processing progress and any failed rows.
+  </Step>
+</Steps>
+
+## Verify a credential (public)
+
+Verification requires no authentication. Three methods are available:
+
+### By verification code
+
+```bash
+POST /api/verify/credential/code
+Content-Type: application/json
+
+{
+  "code": "<verificationCode>"
+}
+```
+
+### By file upload (document comparison)
+
+```bash
+POST /api/verify/credential/pdf
+Content-Type: multipart/form-data
+
+file=<credential-pdf>
+```
+
+### By verification URL
+
+Direct browser access to the credential's `verificationUrl` renders a human-readable verification result page.
+
+## Register a document integrity proof
+
+<Steps>
+  <Step title="Upload the document">
+    ```bash
+    POST /api/document-proofs
+    Content-Type: multipart/form-data
+    Cookie: certiva_access_token=<token>
+
+    file=<document>
+    ```
+    Certiva hashes the document and discards the source file.
+  </Step>
+  <Step title="Distribute the verification code">
+    Share the returned `verificationCode` or QR code with document holders.
+  </Step>
+</Steps>
+
+## Verify a document proof (public)
+
+```bash
+POST /api/document-proofs/verify/document
+Content-Type: multipart/form-data
+
+file=<document-to-verify>
+code=<verificationCode>
+```
+
+Returns `VALID` if the file hash matches the stored proof, or `INVALID` / `NOT_FOUND`.
+
+## Revoke a credential
+
+```bash
+PATCH /api/credentials/:id/revoke
+Content-Type: application/json
+Cookie: certiva_access_token=<token>
+
+{
+  "reason": "DATA_CORRECTION"
+}
+```
+
+Valid reasons: `DATA_CORRECTION`, `ISSUED_IN_ERROR`, `FRAUD_SUSPECTED`, `INSTITUTION_REQUEST`, `OTHER`, `LEGACY`.
+
+## Bulk revoke credentials
+
+```bash
+POST /api/credentials/bulk-revoke
+Content-Type: application/json
+Cookie: certiva_access_token=<token>
+
+{
+  "ids": ["<credentialId1>", "<credentialId2>"],
+  "reason": "INSTITUTION_REQUEST"
+}
+```
+
+## Manage admins
+
+### Create an admin (OWNER or SUPER_ADMIN only)
+
+```bash
+POST /api/auth/register
+Content-Type: application/json
+Cookie: certiva_access_token=<token>
+
+{
+  "username": "newadmin",
+  "password": "<strong-password>",
+  "role": "ADMIN"
+}
+```
+
+### Update an admin
+
+```bash
+PATCH /api/auth/admins/:id
+Content-Type: application/json
+Cookie: certiva_access_token=<token>
+
+{
+  "role": "AUDITOR"
+}
+```
+
+### Disable an admin
+
+```bash
+PATCH /api/auth/admins/:id
+Content-Type: application/json
+Cookie: certiva_access_token=<token>
+
+{
+  "disabled": true
+}
+```
+
+## Export audit logs
+
+```bash
+GET /api/audit/dashboard/export
+Cookie: certiva_access_token=<token>
+```
+
+Returns a downloadable audit export. Format: verify with maintainer.
+
+## Migrate assets from local storage to R2
+
+A one-time migration script is provided for moving assets from the local driver to Cloudflare R2:
+
+```bash
+cd apps/api
+npx tsx scripts/migrate-assets-to-r2.ts
+```
+
+<Warning>
+Run this script only once, in a maintenance window, with valid R2 credentials configured. Verify all assets in R2 before switching `STORAGE_DRIVER=r2` in production.
+</Warning>
+
+## Database backup
+
+A backup script is provided at the repository root:
+
+```bash
+bash scripts/backup.sh
+```
+
+Verify with maintainer for backup destination and retention configuration.
+
+## Rebuild credential assets
+
+If QR codes or metadata for a credential become stale after configuration changes:
+
+```bash
+POST /api/credentials/:id/rebuild-assets
+Cookie: certiva_access_token=<token>
+```

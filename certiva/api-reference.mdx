@@ -1,0 +1,196 @@
+---
+title: "API Reference"
+description: "HTTP API endpoints exposed by the Certiva NestJS backend."
+icon: "code"
+---
+
+The Certiva API is served by the NestJS application in `apps/api`. All routes are prefixed with `/api`.
+
+Authentication uses an `httpOnly` cookie named `certiva_access_token` set on successful login.
+
+## Authentication
+
+### Login
+
+```
+POST /api/auth/login
+```
+
+**Body:**
+
+```json
+{
+  "username": "string",
+  "password": "string"
+}
+```
+
+Sets `certiva_access_token` cookie on success. Rate limited: 5 requests per 60 seconds by default.
+
+### Get current admin
+
+```
+GET /api/auth/me
+```
+
+Returns the authenticated admin's profile.
+
+### Register admin
+
+```
+POST /api/auth/register
+```
+
+Requires `OWNER` or `SUPER_ADMIN` role.
+
+### List admins
+
+```
+GET /api/auth/admins
+```
+
+Requires `OWNER` or `SUPER_ADMIN` role.
+
+### Update admin
+
+```
+PATCH /api/auth/admins/:id
+```
+
+Requires `OWNER` or `SUPER_ADMIN` role.
+
+### Delete admin
+
+```
+DELETE /api/auth/admins/:id
+```
+
+Requires `OWNER` or `SUPER_ADMIN` role. Fails if the admin has historical activity — disable instead.
+
+---
+
+## Credentials
+
+All credential endpoints require authentication.
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/credentials` | Issue a single credential |
+| `POST` | `/api/credentials/bulk` | Issue credentials from a CSV file (multipart) |
+| `POST` | `/api/credentials/bulk-revoke` | Revoke multiple credentials |
+| `POST` | `/api/credentials/bulk-delete` | Delete multiple credentials |
+| `GET` | `/api/credentials` | List credentials |
+| `GET` | `/api/credentials/:id` | Get credential by ID |
+| `DELETE` | `/api/credentials/:id` | Delete credential |
+| `PATCH` | `/api/credentials/:id/revoke` | Revoke a credential with reason |
+| `POST` | `/api/credentials/:id/rebuild-assets` | Rebuild QR code and metadata |
+| `POST` | `/api/credentials/:id/secure-pdf` | Attach a secure PDF to credential |
+| `GET` | `/api/credentials/:id/metadata` | Retrieve credential metadata |
+| `GET` | `/api/credentials/:id/qr` | Retrieve QR code image |
+
+---
+
+## Batches
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/batches/:id` | Get bulk issuance batch details |
+
+---
+
+## Verification (public)
+
+These endpoints do not require authentication. Rate limits apply.
+
+| Method | Path | Rate limit | Description |
+|---|---|---|---|
+| `POST` | `/api/verify/credential/code` | 30 req / 60 s | Verify by verification code |
+| `POST` | `/api/verify/credential/pdf` | 10 req / 60 s | Verify credential by PDF upload |
+| `POST` | `/api/verify/secure-pdf` | 10 req / 60 s | Verify a secure PDF |
+| `GET` | `/api/verify/:verificationId` | — | Get verification result by ID |
+| `GET` | `/api/verify/:verificationId/certificate` | — | Download certificate PDF |
+| `POST` | `/api/verifications` | 30 req / 60 s | General verification endpoint |
+| `POST` | `/api/verification/upload` | 10 req / 60 s | Upload-based verification |
+
+---
+
+## Document proofs
+
+All document-proof write endpoints require authentication. Verification endpoints are public.
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/api/document-proofs` | Create a document integrity proof |
+| `GET` | `/api/document-proofs` | List document proofs |
+| `GET` | `/api/document-proofs/:id` | Get proof by ID |
+| `DELETE` | `/api/document-proofs/:id` | Delete proof |
+| `POST` | `/api/document-proofs/bulk-delete` | Delete multiple proofs |
+| `POST` | `/api/document-proofs/verify/document/code` | Verify document proof by code (public) |
+| `POST` | `/api/document-proofs/verify/document` | Verify document by file upload (public) |
+| `GET` | `/api/document-proofs/:id/metadata` | Get proof metadata |
+| `GET` | `/api/document-proofs/:id/qr` | Get proof QR code image |
+| `GET` | `/api/document-proofs/proof/:verificationId` | Get proof result by verification ID (public) |
+
+---
+
+## Audit
+
+All audit endpoints require authentication.
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/audit/logs` | Full audit log |
+| `GET` | `/api/audit/blockchain` | Blockchain-specific audit log |
+| `GET` | `/api/audit/action-logs` | Action audit log |
+| `GET` | `/api/audit/dashboard/metrics` | Dashboard metrics |
+| `GET` | `/api/audit/dashboard/activity` | Recent activity |
+| `GET` | `/api/audit/dashboard/analytics` | Analytics data |
+| `GET` | `/api/audit/dashboard/issuances` | Issuance statistics |
+| `GET` | `/api/audit/dashboard/revocations` | Revocation statistics |
+| `GET` | `/api/audit/dashboard/queue` | Background job queue status |
+| `GET` | `/api/audit/dashboard/export` | Export audit data |
+
+---
+
+## Institution
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/institution` | Get institution settings |
+| `PATCH` | `/api/institution` | Update institution settings |
+
+---
+
+## Blockchain
+
+| Method | Path | Auth required | Description |
+|---|---|---|---|
+| `GET` | `/api/blockchain/health` | Yes | Check blockchain node connectivity |
+
+---
+
+## Health
+
+| Method | Path | Auth required | Description |
+|---|---|---|---|
+| `GET` | `/api/health` | No | API liveness check |
+
+---
+
+## Verification result values
+
+| Value | Meaning |
+|---|---|
+| `VALID` | Credential is active and unrevoked |
+| `REVOKED` | Credential has been revoked |
+| `NOT_FOUND` | No matching credential found in the registry |
+| `INVALID` | Document hash does not match the stored proof |
+
+## Admin roles
+
+| Role | Value |
+|---|---|
+| Owner | `OWNER` |
+| Super Admin | `SUPER_ADMIN` |
+| Admin | `ADMIN` |
+| Auditor | `AUDITOR` |

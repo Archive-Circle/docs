@@ -1,0 +1,57 @@
+---
+title: "Overview"
+description: "Certiva is a credential verification platform for institutions that need controlled issuance, public verification, document integrity proof, and audit-ready operational records."
+icon: "certificate"
+---
+
+## What is Certiva?
+
+Certiva is an institutional credential registry and verification system. Institutions issue academic or professional credentials into a tamper-evident registry. Each credential carries structured metadata, a verification identifier, a QR payload, and a public verification URL.
+
+Relying parties — employers, other institutions, or verification services — can confirm credential authenticity without contacting the issuing institution directly.
+
+## Key capabilities
+
+<CardGroup cols={2}>
+  <Card title="Credential registry" icon="database">
+    Issue credentials with unique verification codes, QR payloads, and public URLs.
+  </Card>
+  <Card title="Document integrity proof" icon="file-shield">
+    SHA-256 hash-based proof records for uploaded documents, verifiable by file re-upload.
+  </Card>
+  <Card title="Role-based administration" icon="users-gear">
+    Four-tier admin hierarchy: Owner, Super Admin, Admin, Auditor.
+  </Card>
+  <Card title="Append-only audit trail" icon="scroll">
+    Full lifecycle audit log covering credential, admin, and settings events.
+  </Card>
+  <Card title="Batch issuance" icon="table">
+    CSV-driven bulk credential issuance via background job queue.
+  </Card>
+  <Card title="Blockchain anchoring" icon="link">
+    Optional credential anchoring to Polygon Amoy testnet for secondary integrity proof.
+  </Card>
+</CardGroup>
+
+## Architecture
+
+Certiva is a pnpm monorepo orchestrated with Turborepo:
+
+| App / Package | Role |
+|---|---|
+| `apps/api` | NestJS 11 backend — auth, RBAC, credential registry, verification, audit |
+| `apps/web` | Next.js 16 operator dashboard and public verification UI |
+| `apps/worker` | BullMQ background processor — batch issuance, blockchain anchoring |
+| `packages/contracts` | Solidity smart contract and deployment artifacts |
+| `packages/types` | Shared TypeScript domain types |
+| `packages/ui` | Shared React component library |
+
+## Infrastructure requirements
+
+| Dependency | Version | Purpose |
+|---|---|---|
+| PostgreSQL | 16 | Primary data store (Prisma ORM) |
+| Redis | 7 | BullMQ job queues and rate-limit cache |
+| Node.js | 20+ | Runtime |
+| Cloudflare R2 | — | Object storage (staging and production) |
+| Polygon Amoy RPC | — | Blockchain anchoring (optional) |
