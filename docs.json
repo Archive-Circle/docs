@@ -102,13 +102,8 @@
     "global": {
       "anchors": [
         {
-          "anchor": "Eternum App",
-          "href": "https://eternum.archivecircle.xyz",
-          "icon": "external-link"
-        },
-        {
-          "anchor": "Eternum GitHub",
-          "href": "https://github.com/Archive-Circle/eternum",
+          "anchor": "Archive Circle GitHub",
+          "href": "https://github.com/Archive-Circle",
           "icon": "github"
         }
       ]
@@ -121,15 +116,10 @@
   "navbar": {
     "links": [
       {
-        "label": "Eternum GitHub",
-        "href": "https://github.com/Archive-Circle/eternum"
+        "label": "GitHub",
+        "href": "https://github.com/Archive-Circle"
       }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Open Eternum",
-      "href": "https://eternum.archivecircle.xyz"
-    }
+    ]
   },
   "contextual": {
     "options": [
