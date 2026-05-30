@@ -1,0 +1,341 @@
+---
+title: "API Reference"
+description: "All Certiva REST API endpoints with request parameters and response shapes."
+icon: "code"
+---
+
+The Certiva API is a NestJS application served at `apps/api`. All routes are prefixed with `/api`.
+
+Authentication uses a JWT returned on login. The API sets an `httpOnly` cookie (`certiva_access_token`) and also returns an `accessToken` in the response body. Protected endpoints accept either the cookie or a `Bearer` token in the `Authorization` header.
+
+---
+
+## Health
+
+### GET /api/health
+
+Public liveness check. No authentication required.
+
+```json
+{ "status": "ok" }
+```
+
+---
+
+## Authentication
+
+### POST /api/auth/login
+
+Rate limited: **5 requests per 60 seconds** (configurable).
+
+```bash
+curl -X POST /api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username": "admin", "password": "your-password"}'
+```
+
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+Sets `certiva_access_token` as an `httpOnly`, `sameSite: lax` cookie.
+
+### GET /api/auth/me
+
+Returns the authenticated admin's profile.
+
+### POST /api/auth/register
+
+Create a new admin. Requires `OWNER` or `SUPER_ADMIN` role.
+
+**Body:** `{ username, password, role }` — role is one of `OWNER`, `SUPER_ADMIN`, `ADMIN`, `AUDITOR`.
+
+### GET /api/auth/admins
+
+List all admins. Requires `OWNER` or `SUPER_ADMIN`.
+
+### PATCH /api/auth/admins/:id
+
+Update an admin's role or disabled status. Requires `OWNER` or `SUPER_ADMIN`.
+
+### DELETE /api/auth/admins/:id
+
+Delete an admin. Requires `OWNER` or `SUPER_ADMIN`. Fails if the admin has any historical activity — disable instead.
+
+---
+
+## Credentials
+
+All credential write endpoints require authentication.
+
+### POST /api/credentials
+
+Issue a single credential.
+
+**Body:**
+```json
+{
+  "studentName": "Ahmad Fauzi Ramadhan",
+  "studentId": "2019081234",
+  "degree": "Bachelor of Computer Science",
+  "graduationYear": 2024
+}
+```
+
+**Response:**
+```json
+{
+  "id": "clx9k2...",
+  "verificationId": "vrf_2f9a0cdbe7c1",
+  "verificationCode": "CERT-A1B2C3",
+  "verificationUrl": "https://certiva.io/verify/vrf_2f9a0cdbe7c1",
+  "qrCodeUri": "https://api.certiva.io/api/credentials/<id>/qr",
+  "anchorStatus": "PENDING",
+  "issuedAt": "2024-06-01T08:00:00.000Z"
+}
+```
+
+`anchorStatus` is `PENDING` on creation and transitions to `ANCHORED` after the worker submits the blockchain transaction.
+
+### POST /api/credentials/bulk
+
+Issue credentials from a CSV file. Returns a `batchId` — poll `GET /api/batches/:id` for progress.
+
+### POST /api/credentials/bulk-revoke
+
+**Body:** `{ ids: string[], reason: RevocationReason }`
+
+### POST /api/credentials/bulk-delete
+
+**Body:** `{ ids: string[] }`
+
+### GET /api/credentials
+
+List credentials for the institution.
+
+### GET /api/credentials/:id
+
+Get a single credential by ID.
+
+### DELETE /api/credentials/:id
+
+Delete a credential.
+
+### PATCH /api/credentials/:id/revoke
+
+**Body:** `{ reason: RevocationReason }`
+
+Valid reasons: `DATA_CORRECTION`, `ISSUED_IN_ERROR`, `FRAUD_SUSPECTED`, `INSTITUTION_REQUEST`, `OTHER`, `LEGACY`.
+
+### POST /api/credentials/:id/rebuild-assets
+
+Regenerates the QR code image and metadata file for the credential. Use after changing `API_PUBLIC_BASE_URL` or `WEB_PUBLIC_BASE_URL`.
+
+### POST /api/credentials/:id/secure-pdf
+
+Attach a secure PDF document proof to an existing credential.
+
+### GET /api/credentials/:id/metadata
+
+Returns the credential metadata JSON.
+
+### GET /api/credentials/:id/qr
+
+Returns the QR code image.
+
+---
+
+## Batches
+
+### GET /api/batches/:id
+
+Get bulk issuance batch details, including per-row results and failure reasons.
+
+```json
+{
+  "batchId": "batch_8f3c...",
+  "status": "COMPLETED",
+  "totalRows": 250,
+  "processedRows": 248,
+  "failedRows": 2
+}
+```
+
+---
+
+## Verification
+
+Public endpoints. No authentication required. Rate limits apply.
+
+### POST /api/verify/credential/code
+
+Rate limited: **30 requests per 60 seconds**.
+
+**Body:** `{ "verificationCode": "CERT-A1B2C3" }`
+
+```json
+{
+  "verificationId": "vrf_2f9a0cdbe7c1",
+  "verificationCode": "CERT-A1B2C3",
+  "verificationMode": "CORE_REGISTRY",
+  "valid": true,
+  "result": "VALID",
+  "revoked": false,
+  "revocationReason": null,
+  "degree": "Bachelor of Computer Science",
+  "issuedAt": "2024-06-01T08:00:00.000Z",
+  "issuer": {
+    "name": "Universitas Contoh",
+    "domain": "example.ac.id",
+    "status": "ACTIVE"
+  },
+  "blockchainVerified": true,
+  "blockchainStatus": "anchored",
+  "txHash": "0x3a7f2e...c4d1b8",
+  "blockNumber": 14203847,
+  "anchoredAt": "2024-06-01T08:04:12.000Z",
+  "trustChecks": [
+    { "key": "integrity", "label": "Credential Integrity Verified", "ok": true },
+    { "key": "issuer", "label": "Official Issuer Confirmed", "ok": true },
+    { "key": "chain", "label": "Blockchain Proof Verified", "ok": true },
+    { "key": "active", "label": "Credential Active", "ok": true }
+  ],
+  "verifiedAtTimestamp": "2024-06-01T09:15:00.000Z"
+}
+```
+
+### POST /api/verify/credential/pdf
+
+Rate limited: **10 requests per 60 seconds**. Multipart form upload.
+
+### POST /api/verify/secure-pdf
+
+Rate limited: **10 requests per 60 seconds**. Verifies a secure PDF document proof.
+
+### GET /api/verify/:verificationId
+
+Get a verification result by `verificationId`.
+
+### GET /api/verify/:verificationId/certificate
+
+Download the certificate PDF for a verified credential.
+
+### POST /api/verifications
+
+General verification endpoint.
+
+### POST /api/verification/upload
+
+Rate limited: **10 requests per 60 seconds**. Upload-based verification.
+
+---
+
+## Document Proofs
+
+Write endpoints require authentication. Verification endpoints are public.
+
+### POST /api/document-proofs
+
+Register a document integrity proof. Multipart form upload. The source file is discarded — only the SHA-256 hash is stored.
+
+**Response:**
+```json
+{
+  "id": "dp_7a3f...",
+  "verificationCode": "DOC-X9Y8Z7",
+  "qrCodeUri": "https://api.certiva.io/api/document-proofs/dp_7a3f.../qr"
+}
+```
+
+### GET /api/document-proofs
+
+List document proofs for the institution.
+
+### GET /api/document-proofs/:id
+
+Get a single proof by ID.
+
+### DELETE /api/document-proofs/:id
+
+Delete a proof.
+
+### POST /api/document-proofs/bulk-delete
+
+**Body:** `{ ids: string[] }`
+
+### POST /api/document-proofs/verify/document/code
+
+Public. Verify document proof by verification code.
+
+### POST /api/document-proofs/verify/document
+
+Public. Verify document proof by file upload (multipart).
+
+```json
+{ "result": "VALID", "verificationMode": "SECURE_PDF" }
+```
+
+### GET /api/document-proofs/:id/metadata
+
+Returns proof metadata JSON.
+
+### GET /api/document-proofs/:id/qr
+
+Returns the proof QR code image.
+
+### GET /api/document-proofs/proof/:verificationId
+
+Public. Get proof result by `verificationId`.
+
+---
+
+## Audit
+
+All audit endpoints require authentication.
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/audit/logs` | Full audit log |
+| `GET` | `/api/audit/blockchain` | Blockchain anchor audit log |
+| `GET` | `/api/audit/action-logs` | Action audit log |
+| `GET` | `/api/audit/dashboard/metrics` | Dashboard metrics |
+| `GET` | `/api/audit/dashboard/activity` | Recent activity |
+| `GET` | `/api/audit/dashboard/analytics` | Analytics data |
+| `GET` | `/api/audit/dashboard/issuances` | Issuance statistics |
+| `GET` | `/api/audit/dashboard/revocations` | Revocation statistics |
+| `GET` | `/api/audit/dashboard/queue` | Background job queue status |
+| `GET` | `/api/audit/dashboard/export` | Export audit data |
+
+---
+
+## Institution
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/institution` | Get institution settings |
+| `PATCH` | `/api/institution` | Update institution settings |
+
+---
+
+## Blockchain
+
+### GET /api/blockchain/health
+
+Requires authentication. Checks connectivity to the configured Polygon Amoy RPC endpoint.
+
+```json
+{ "connected": true, "blockNumber": 14203847 }
+```
+
+---
+
+## Verification result values
+
+| Value | Meaning |
+|---|---|
+| `VALID` | Credential is active and unrevoked |
+| `REVOKED` | Credential has been revoked |
+| `NOT_FOUND` | No matching record in the registry |
+| `INVALID` | Document hash does not match the stored proof |

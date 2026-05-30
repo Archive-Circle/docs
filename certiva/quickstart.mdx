@@ -1,0 +1,203 @@
+---
+title: "Quickstart"
+description: "Get Certiva running locally, issue your first credential, and run a public verification — all in five steps."
+icon: "rocket"
+---
+
+This guide walks through the complete local setup: starting infrastructure, configuring environment variables, running the API, issuing a credential, and verifying it publicly. By the end you will have a working Certiva instance and a verified credential response.
+
+<Note>
+  You need Node.js 20+, pnpm 9+, and Docker with Docker Compose installed before starting.
+</Note>
+
+<Steps>
+  <Step title="Clone and install dependencies">
+    ```bash
+    git clone <certiva-repository-url>
+    cd certiva
+    pnpm install
+    ```
+  </Step>
+
+  <Step title="Start infrastructure">
+    ```bash
+    docker compose up -d
+    ```
+
+    This starts PostgreSQL 16 on port `5432` and Redis 7 on port `6379`. Both have health checks configured — wait a few seconds before proceeding.
+  </Step>
+
+  <Step title="Configure environment variables">
+    Copy the example files for each app:
+
+    ```bash
+    cp .env.example .env
+    cp apps/api/.env.example apps/api/.env
+    cp apps/web/.env.example apps/web/.env
+    cp apps/worker/.env.example apps/worker/.env
+    ```
+
+    Minimum values to set in `apps/api/.env` for local development:
+
+    ```bash
+    DATABASE_URL=postgresql://certiva:certiva@localhost:5432/certiva
+    REDIS_URL=redis://localhost:6379
+    JWT_SECRET=<at-least-64-random-characters>
+    CORS_ORIGINS=http://localhost:3000
+    API_PUBLIC_BASE_URL=http://localhost:4000
+    WEB_PUBLIC_BASE_URL=http://localhost:3000
+    STORAGE_DRIVER=local
+    ASSET_STORAGE_ROOT=./uploads
+    ```
+
+    <Note>
+      `STORAGE_DRIVER=local` is only allowed in development. Staging and production require `STORAGE_DRIVER=r2` with Cloudflare R2 credentials. See [Configuration](/certiva/configuration) for the full variable reference.
+    </Note>
+  </Step>
+
+  <Step title="Run migrations and start the API">
+    ```bash
+    cd apps/api
+    pnpm dev
+    ```
+
+    Prisma migrations are applied automatically on startup via `prisma migrate deploy`. The API listens on port `4000` by default.
+
+    Confirm it is running:
+
+    ```bash
+    curl http://localhost:4000/api/health
+    ```
+
+    ```json
+    { "status": "ok" }
+    ```
+  </Step>
+
+  <Step title="Start the web dashboard and worker">
+    In two separate terminals:
+
+    ```bash
+    # Terminal 2 — web dashboard
+    cd apps/web
+    pnpm dev
+    ```
+
+    ```bash
+    # Terminal 3 — background worker
+    cd apps/worker
+    pnpm dev
+    ```
+
+    The dashboard is available at [http://localhost:3000](http://localhost:3000).
+  </Step>
+
+  <Step title="Seed the database and issue a credential">
+    Create the initial Owner admin account:
+
+    ```bash
+    cd apps/api
+    pnpm prisma:seed
+    ```
+
+    Log in and get a token:
+
+    ```bash
+    curl -X POST http://localhost:4000/api/auth/login \
+      -H "Content-Type: application/json" \
+      -d '{"username": "admin", "password": "<seed-password>"}'
+    ```
+
+    ```json
+    {
+      "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    }
+    ```
+
+    <Tip>
+      The API also sets an `httpOnly` cookie (`certiva_access_token`). Browser-based dashboard requests use the cookie automatically — no manual header needed.
+    </Tip>
+
+    Issue a credential:
+
+    ```bash
+    curl -X POST http://localhost:4000/api/credentials \
+      -H "Content-Type: application/json" \
+      -H "Authorization: Bearer <accessToken>" \
+      -d '{
+        "studentName": "Ahmad Fauzi Ramadhan",
+        "studentId": "2019081234",
+        "degree": "Bachelor of Computer Science",
+        "graduationYear": 2024
+      }'
+    ```
+
+    ```json
+    {
+      "id": "clx9k2...",
+      "verificationId": "vrf_2f9a0cdbe7c1",
+      "verificationCode": "CERT-A1B2C3",
+      "verificationUrl": "http://localhost:3000/verify/vrf_2f9a0cdbe7c1",
+      "qrCodeUri": "http://localhost:4000/api/credentials/<id>/qr",
+      "anchorStatus": "PENDING",
+      "studentName": "Ahmad Fauzi Ramadhan",
+      "studentId": "2019081234",
+      "degree": "Bachelor of Computer Science",
+      "graduationYear": 2024,
+      "issuedAt": "2024-03-14T08:00:00.000Z"
+    }
+    ```
+
+    `anchorStatus` starts as `PENDING` and transitions to `ANCHORED` after the worker processes the blockchain job. This happens asynchronously and does not block the credential from being verified immediately.
+  </Step>
+
+  <Step title="Verify the credential publicly">
+    Anyone can verify without a Certiva account:
+
+    ```bash
+    curl -X POST http://localhost:4000/api/verify/credential/code \
+      -H "Content-Type: application/json" \
+      -d '{"verificationCode": "CERT-A1B2C3"}'
+    ```
+
+    ```json
+    {
+      "verificationId": "vrf_2f9a0cdbe7c1",
+      "verificationCode": "CERT-A1B2C3",
+      "verificationMode": "CORE_REGISTRY",
+      "valid": true,
+      "result": "VALID",
+      "revoked": false,
+      "revocationReason": null,
+      "degree": "Bachelor of Computer Science",
+      "issuedAt": "2024-03-14T08:00:00.000Z",
+      "issuer": {
+        "name": "Universitas Contoh",
+        "domain": "example.ac.id",
+        "status": "ACTIVE"
+      },
+      "blockchainVerified": false,
+      "anchorStatus": "PENDING"
+    }
+    ```
+
+    A `result` of `VALID` confirms the credential is active and unrevoked. Once the worker anchors the credential, `blockchainVerified` becomes `true` and the response includes `txHash`, `blockNumber`, and `anchoredAt`.
+  </Step>
+</Steps>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Concepts" icon="book-open" href="/certiva/concepts">
+    Credential lifecycle, verification modes, roles, and blockchain anchoring.
+  </Card>
+  <Card title="Configuration" icon="sliders" href="/certiva/configuration">
+    Every environment variable with validation rules and production requirements.
+  </Card>
+  <Card title="Workflows" icon="arrow-progress" href="/certiva/workflows">
+    Bulk issuance, revocation, document proofs, and admin management.
+  </Card>
+  <Card title="API Reference" icon="code" href="/certiva/api-reference">
+    All endpoints with request/response shapes.
+  </Card>
+</CardGroup>

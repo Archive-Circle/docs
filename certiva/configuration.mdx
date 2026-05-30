@@ -1,0 +1,140 @@
+---
+title: "Configuration"
+description: "Every environment variable for the Certiva API, web dashboard, and background worker — with validation rules and production requirements."
+icon: "sliders"
+---
+
+Certiva validates all environment variables at startup using a Zod schema. A missing or invalid value causes an immediate hard failure with a descriptive error. Several rules are only enforced when `APP_ENV=staging` or `APP_ENV=production`.
+
+## Root-level variables
+
+Used by Docker Compose and Turborepo. Set in the root `.env`.
+
+| Variable | Required | Description |
+|---|---|---|
+| `POSTGRES_USER` | Yes | PostgreSQL username |
+| `POSTGRES_PASSWORD` | Yes | PostgreSQL password |
+| `POSTGRES_DB` | Yes | PostgreSQL database name |
+| `NODE_ENV` | Yes | `development` / `production` / `test` |
+| `APP_ENV` | Yes | `development` / `staging` / `production` — controls validation strictness |
+
+## API variables
+
+Set in `apps/api/.env`.
+
+### Database and cache
+
+| Variable | Required | Example |
+|---|---|---|
+| `DATABASE_URL` | Yes | `postgresql://user:pass@localhost:5432/certiva` |
+| `REDIS_URL` | Yes | `redis://localhost:6379` |
+
+### Auth and server
+
+| Variable | Required | Default | Notes |
+|---|---|---|---|
+| `JWT_SECRET` | Yes | — | Minimum 64 characters. Placeholder values rejected in staging/prod. |
+| `JWT_EXPIRES_IN` | No | `12h` | Token lifetime |
+| `PORT` | No | `4000` | API listening port |
+| `CORS_ORIGINS` | Yes | — | Comma-separated allowlist. Wildcard (`*`) rejected in staging/prod. |
+| `COOKIE_SECURE` | No | `false` | Set `true` when behind HTTPS |
+| `TRUST_PROXY` | No | `false` | Set `true` when behind a reverse proxy or Cloudflare |
+
+### Public URLs
+
+| Variable | Required | Description |
+|---|---|---|
+| `API_PUBLIC_BASE_URL` | Yes | Used when generating QR codes and verification links |
+| `WEB_PUBLIC_BASE_URL` | Yes | Used in credential metadata URIs |
+
+### Storage
+
+| Variable | Required | Options | Notes |
+|---|---|---|---|
+| `STORAGE_DRIVER` | Yes | `local` / `r2` | `r2` is enforced in staging/prod |
+| `ASSET_STORAGE_ROOT` | If `local` | — | Filesystem root path for local driver |
+
+### Cloudflare R2
+
+Required when `STORAGE_DRIVER=r2`.
+
+| Variable | Description |
+|---|---|
+| `R2_ACCOUNT_ID` | Cloudflare account ID |
+| `R2_BUCKET` | Bucket name |
+| `R2_ACCESS_KEY_ID` | R2 access key |
+| `R2_SECRET_ACCESS_KEY` | R2 secret key |
+| `R2_ENDPOINT` | S3-compatible endpoint URL |
+| `R2_PUBLIC_BASE_URL` | Public CDN base URL for served assets |
+| `R2_FORCE_PATH_STYLE` | `true` / `false` |
+
+### Blockchain
+
+| Variable | Required | Description |
+|---|---|---|
+| `BLOCKCHAIN_ENABLED` | No | `true` to enable anchoring. Requires all variables below. |
+| `POLYGON_AMOY_RPC_URL` | If enabled | RPC endpoint for Polygon Amoy testnet |
+| `PRIVATE_KEY` | If enabled | `0x`-prefixed 64-char hex key. Known dev keys rejected in staging/prod. |
+| `CONTRACT_ADDRESS` | If enabled | `0x`-prefixed 40-char deployed `CredentialRegistry` address |
+| `ISSUER_WALLET` | If enabled | `0x`-prefixed 40-char issuer wallet address |
+| `BLOCKCHAIN_RPC_TIMEOUT_MS` | No | RPC timeout in ms (default: `12000`) |
+
+### Rate limiting
+
+Redis-backed rate limiting is strongly recommended in staging and production.
+
+| Variable | Default | Description |
+|---|---|---|
+| `RATE_LIMIT_STORE` | `memory` | `redis` or `memory` |
+| `RATE_LIMIT_REDIS_PREFIX` | — | Redis key namespace |
+| `RATE_LIMIT_AUTH_LOGIN_MAX` | `5` | Login attempts per window |
+| `RATE_LIMIT_AUTH_LOGIN_WINDOW_SECONDS` | `60` | Login window |
+| `RATE_LIMIT_VERIFY_MAX` | `30` | Verification requests per window |
+| `RATE_LIMIT_VERIFY_WINDOW_SECONDS` | `60` | Verification window |
+| `RATE_LIMIT_VERIFY_UPLOAD_MAX` | `10` | Upload verification requests per window |
+| `RATE_LIMIT_VERIFY_UPLOAD_WINDOW_SECONDS` | `60` | Upload window |
+| `RATE_LIMIT_ADMIN_MAX` | `100` | Admin route requests per window |
+| `RATE_LIMIT_ADMIN_WINDOW_SECONDS` | `60` | Admin window |
+
+## Web variables
+
+Set in `apps/web/.env`.
+
+| Variable | Exposed to browser | Description |
+|---|---|---|
+| `NODE_ENV` | No | Build mode |
+| `APP_ENV` | No | Deployment context |
+| `INTERNAL_API_URL` | No | Server-side URL used by Next.js BFF routes to call the API |
+| `COOKIE_SECURE` | No | `true` for HTTPS |
+| `NEXT_PUBLIC_SITE_URL` | Yes | Public-facing site URL shown in the UI |
+| `NEXT_PUBLIC_SUPPORT_EMAIL` | Yes | Support contact email shown in the UI |
+
+<Warning>
+  `NEXT_PUBLIC_` variables are embedded into the browser bundle at build time. Never put secrets, internal URLs, or API keys in them.
+</Warning>
+
+## Worker variables
+
+Set in `apps/worker/.env`.
+
+| Variable | Required | Description |
+|---|---|---|
+| `DATABASE_URL` | Yes | PostgreSQL connection string |
+| `REDIS_URL` | Yes | Redis connection string |
+| `BLOCKCHAIN_ENABLED` | No | `true` to process blockchain anchoring jobs |
+| `POLYGON_AMOY_RPC_URL` | If enabled | RPC endpoint |
+| `PRIVATE_KEY` | If enabled | Signing key |
+| `CONTRACT_ADDRESS` | If enabled | Contract address |
+| `ISSUER_WALLET` | If enabled | Issuer wallet address |
+| `BLOCKCHAIN_RPC_TIMEOUT_MS` | No | RPC timeout in ms |
+
+## Startup validation rules
+
+These rules are enforced in `apps/api/src/config/env.schema.ts` at startup:
+
+- `JWT_SECRET` must be at least 64 characters and must not be a known placeholder value in staging/prod.
+- `CORS_ORIGINS` must not be empty or contain `*` in staging/prod.
+- `STORAGE_DRIVER` must be `r2` in staging/prod — `local` is rejected.
+- When `BLOCKCHAIN_ENABLED=true`: `POLYGON_AMOY_RPC_URL`, `PRIVATE_KEY`, and `CONTRACT_ADDRESS` are all required.
+- When `STORAGE_DRIVER=r2`: all `R2_*` variables are required.
+- `PRIVATE_KEY` must not match known development test keys in staging/prod.
