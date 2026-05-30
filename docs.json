@@ -16,42 +16,42 @@
           {
             "group": "Start here",
             "pages": [
-              "index",
-              "quickstart"
+              "eternum/index",
+              "eternum/quickstart"
             ]
           },
           {
             "group": "User guides",
             "pages": [
-              "guides/vault",
-              "guides/trusted-contacts",
-              "guides/beneficiaries",
-              "guides/check-ins",
-              "guides/billing"
+              "eternum/guides/vault",
+              "eternum/guides/trusted-contacts",
+              "eternum/guides/beneficiaries",
+              "eternum/guides/check-ins",
+              "eternum/guides/billing"
             ]
           },
           {
             "group": "Recovery",
             "pages": [
-              "recovery/overview",
-              "recovery/trusted-contact-release",
-              "recovery/beneficiary-claim"
+              "eternum/recovery/overview",
+              "eternum/recovery/trusted-contact-release",
+              "eternum/recovery/beneficiary-claim"
             ]
           },
           {
             "group": "Security",
             "pages": [
-              "security/zero-knowledge-model",
-              "security/key-management",
-              "security/recovery-shares"
+              "eternum/security/zero-knowledge-model",
+              "eternum/security/key-management",
+              "eternum/security/recovery-shares"
             ]
           },
           {
             "group": "Operators",
             "pages": [
-              "operators/deployment",
-              "operators/admin-pipeline",
-              "operators/environment"
+              "eternum/operators/deployment",
+              "eternum/operators/admin-pipeline",
+              "eternum/operators/environment"
             ]
           }
         ]

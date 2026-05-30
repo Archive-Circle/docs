@@ -1,0 +1,49 @@
+---
+title: "Eternum documentation"
+description: "Learn how Eternum protects encrypted vault data and coordinates digital inheritance recovery."
+---
+
+Eternum is a zero-knowledge digital inheritance platform. You encrypt important records in your browser, distribute recovery shares to trusted contacts, and define beneficiaries who can recover the vault after death verification.
+
+<Info>
+Eternum cannot read vault contents. The server stores encrypted data, encrypted recovery shares, and release state, but it never receives the plaintext vault key.
+</Info>
+
+<Columns cols={2}>
+  <Card title="Set up your vault" icon="vault" href="/eternum/quickstart">
+    Create an account, add encrypted vault items, and prepare recovery shares.
+  </Card>
+  <Card title="Understand recovery" icon="key" href="/eternum/recovery/overview">
+    See how trusted contacts, beneficiaries, and death verification work together.
+  </Card>
+  <Card title="Review the security model" icon="shield" href="/eternum/security/zero-knowledge-model">
+    Learn what Eternum can and cannot decrypt.
+  </Card>
+  <Card title="Operate Eternum" icon="server" href="/eternum/operators/deployment">
+    Deploy the API, web app, database, Redis, and object storage services.
+  </Card>
+</Columns>
+
+## How Eternum works
+
+<Steps>
+  <Step title="Create a local vault key">
+    Your browser derives a master key from your PIN or password using Argon2id.
+  </Step>
+  <Step title="Encrypt vault items before upload">
+    Each vault item is encrypted in the browser with AES-GCM before it leaves your device.
+  </Step>
+  <Step title="Split recovery shares">
+    Your browser splits the master key into Shamir Secret Sharing recovery shares.
+  </Step>
+  <Step title="Release shares after verification">
+    If death verification completes, trusted contacts release beneficiary-bound recovery shares.
+  </Step>
+  <Step title="Recover in the beneficiary browser">
+    Beneficiaries combine enough shares in-browser to reconstruct the master key and decrypt vault items.
+  </Step>
+</Steps>
+
+<Warning>
+If you lose your credential and do not have enough recovery shares available later, Eternum cannot recover the vault for you.
+</Warning>
